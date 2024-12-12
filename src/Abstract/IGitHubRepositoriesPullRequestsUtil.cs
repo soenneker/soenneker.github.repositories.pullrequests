@@ -84,33 +84,36 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Filters repositories that have pull requests with failed builds.
     /// </summary>
     /// <param name="repositories">The list of repositories to filter.</param>
+    /// <param name="log"></param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with failed pull request builds.
     /// </returns>
     [Pure]
-    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all repositories that have open pull requests with failed builds for a specific user.
     /// </summary>
     /// <param name="username">The username to filter the repositories by.</param>
+    /// <param name="log"></param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with failed builds on open pull requests.
     /// </returns>
     [Pure]
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all repositories with open pull requests for a specific owner.
     /// </summary>
     /// <param name="owner">The username or organization name of the repository owner.</param>
+    /// <param name="log"></param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with open pull requests.
     /// </returns>
     [Pure]
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, bool log = true, CancellationToken cancellationToken = default);
 
 }
