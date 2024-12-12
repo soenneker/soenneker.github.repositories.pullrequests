@@ -79,4 +79,22 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
 
         _logger.LogInformation("Approved PR #{number} ({message})", pullRequest.Number, message);
     }
+
+    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithOpenPullRequests(IReadOnlyList<Repository> repositories, CancellationToken cancellationToken)
+    {
+        var result = new List<Repository>();
+
+        foreach (Repository repository in repositories)
+        {
+            IReadOnlyList<PullRequest> pullRequests = await GetAll(repository, cancellationToken: cancellationToken).NoSync();
+
+            if (!pullRequests.Any())
+                continue;
+
+            _logger.LogInformation("-- {repo} has {count} PRs open --", repository.Name, pullRequests.Count);
+            result.Add(repository);
+        }
+
+        return result;
+    }
 }
