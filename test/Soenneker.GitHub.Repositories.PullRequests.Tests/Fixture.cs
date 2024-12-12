@@ -18,14 +18,11 @@ public class Fixture : UnitFixture
 
     private static void SetupIoC(IServiceCollection services)
     {
-        services.AddLogging(builder =>
-        {
-            builder.AddSerilog(dispose: true);
-        });
+        services.AddLogging(builder => { builder.AddSerilog(dispose: true); });
 
         IConfiguration config = TestUtil.BuildConfig();
         services.AddSingleton(config);
 
-        services.AddGitHubRepositoryPullRequestsUtilAsScoped();
+        services.AddGitHubRepositoriesPullRequestsUtilAsScoped();
     }
 }

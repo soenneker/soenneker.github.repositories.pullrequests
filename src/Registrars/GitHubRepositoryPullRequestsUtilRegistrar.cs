@@ -13,18 +13,22 @@ public static class GitHubRepositoriesPullRequestsUtilRegistrar
     /// <summary>
     /// Adds <see cref="IGitHubRepositoriesPullRequestsUtil"/> as a singleton service. <para/>
     /// </summary>
-    public static void AddGitHubRepositoriesPullRequestsUtilAsSingleton(this IServiceCollection services)
+    public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsSingleton(this IServiceCollection services)
     {
         services.AddGitHubClientUtilAsSingleton();
         services.TryAddSingleton<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
+
+        return services;
     }
 
     /// <summary>
     /// Adds <see cref="IGitHubRepositoriesPullRequestsUtil"/> as a scoped service. <para/>
     /// </summary>
-    public static void AddGitHubRepositoriesPullRequestsUtilAsScoped(this IServiceCollection services)
+    public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsScoped(this IServiceCollection services)
     {
         services.AddGitHubClientUtilAsSingleton();
         services.TryAddScoped<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
+
+        return services;
     }
 }
