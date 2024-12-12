@@ -10,15 +10,15 @@ namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
 /// </summary>
 public interface IGitHubRepositoriesPullRequestsUtil
 {
-    ValueTask<IReadOnlyList<PullRequest>> GetPullRequests(Repository repository, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, CancellationToken cancellationToken = default);
 
-    ValueTask<IReadOnlyList<PullRequest>> GetPullRequests(string owner, string name, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, CancellationToken cancellationToken = default);
 
-    ValueTask ApproveAllPullRequests(Repository repository, string message, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask ApproveAll(Repository repository, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
 
-    ValueTask ApproveAllPullRequests(string owner, string name, string message, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask ApproveAll(string owner, string name, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
 
-    ValueTask ApprovePullRequest(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
+    ValueTask Approve(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
 
-    ValueTask ApprovePullRequest(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
+    ValueTask Approve(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
 }

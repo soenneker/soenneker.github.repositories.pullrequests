@@ -23,12 +23,12 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         _gitHubClientUtil = gitHubClientUtil;
     }
 
-    public async ValueTask<IReadOnlyList<PullRequest>> GetPullRequests(Repository repository, string? username = null, CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, CancellationToken cancellationToken = default)
     {
-        return await GetPullRequests(repository.Owner.Login, repository.Name, username, cancellationToken).NoSync();
+        return GetAll(repository.Owner.Login, repository.Name, username, cancellationToken);
     }
 
-    public async ValueTask<IReadOnlyList<PullRequest>> GetPullRequests(string owner, string name, string? username = null, CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, CancellationToken cancellationToken = default)
     {
         GitHubClient client = await _gitHubClientUtil.Get(cancellationToken).NoSync();
 
@@ -36,14 +36,14 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         return username == null ? pullRequests : pullRequests.Where(pr => pr.User.Login == username).ToList();
     }
 
-    public ValueTask ApproveAllPullRequests(Repository repository, string message, string? username = null, CancellationToken cancellationToken = default)
+    public ValueTask ApproveAll(Repository repository, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default)
     {
-        return ApproveAllPullRequests(repository.Owner.Login, repository.Name, message, username, cancellationToken);
+        return ApproveAll(repository.Owner.Login, repository.Name, message, username, delayMs, cancellationToken);
     }
 
-    public async ValueTask ApproveAllPullRequests(string owner, string name, string message, string? username = null, CancellationToken cancellationToken = default)
+    public async ValueTask ApproveAll(string owner, string name, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<PullRequest> pullRequests = await GetPullRequests(owner, name, username, cancellationToken).NoSync();
+        IReadOnlyList<PullRequest> pullRequests = await GetAll(owner, name, username, cancellationToken).NoSync();
 
         if (!pullRequests.Any())
             return;
@@ -53,16 +53,19 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         for (var i = 0; i < pullRequests.Count; i++)
         {
             PullRequest pr = pullRequests[i];
-            await ApprovePullRequest(owner, name, pr, message, cancellationToken).NoSync();
+            await Approve(owner, name, pr, message, cancellationToken).NoSync();
+
+            if (delayMs > 0)
+                await Task.Delay(delayMs, cancellationToken);
         }
     }
 
-    public ValueTask ApprovePullRequest(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
+    public ValueTask Approve(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
     {
-        return ApprovePullRequest(repository.Owner.Login, repository.Name, pullRequest, message, cancellationToken);
+        return Approve(repository.Owner.Login, repository.Name, pullRequest, message, cancellationToken);
     }
 
-    public async ValueTask ApprovePullRequest(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
+    public async ValueTask Approve(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
     {
         var review = new PullRequestReviewCreate
         {
@@ -74,8 +77,6 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
 
         await client.PullRequest.Review.Create(owner, name, pullRequest.Number, review).NoSync();
 
-        _logger.LogInformation($"Approved PR #{pullRequest.Number}");
-
-        await Task.Delay(1000, cancellationToken);
+        _logger.LogInformation("Approved PR #{number} ({message})", pullRequest.Number, message);
     }
 }
