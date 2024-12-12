@@ -9,6 +9,7 @@ using Soenneker.GitHub.Client.Abstract;
 using System.Collections.Generic;
 using System.Linq;
 using Soenneker.GitHub.Repositories.Abstract;
+using Soenneker.GitHub.Repositories.Runs.Abstract;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
@@ -18,12 +19,14 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
     private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
     private readonly IGitHubClientUtil _gitHubClientUtil;
     private readonly IGitHubRepositoriesUtil _gitHubRepositoriesUtil;
+    private readonly IGitHubRepositoriesRunsUtil _gitHubRepositoriesRunsUtil;
 
-    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil)
+    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil, IGitHubRepositoriesRunsUtil gitHubRepositoriesRunsUtil)
     {
         _logger = logger;
         _gitHubClientUtil = gitHubClientUtil;
         _gitHubRepositoriesUtil = gitHubRepositoriesUtil;
+        _gitHubRepositoriesRunsUtil = gitHubRepositoriesRunsUtil;
     }
 
     public ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, CancellationToken cancellationToken = default)
@@ -99,6 +102,36 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         }
 
         return result;
+    }
+
+    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, CancellationToken cancellationToken = default)
+    {
+        var result = new List<Repository>();
+
+        foreach (Repository repository in repositories)
+        {
+            IReadOnlyList<PullRequest> pullRequests = await GetAll(repository, cancellationToken: cancellationToken).NoSync();
+
+            foreach (PullRequest pr in pullRequests)
+            {
+                bool hasFailedBuild = await _gitHubRepositoriesRunsUtil.HasFailedRun(repository, pr, cancellationToken).NoSync();
+
+                if (!hasFailedBuild)
+                    continue;
+
+                _logger.LogInformation("Repository ({repo}) has a PR ({title}) with a failed build", repository.FullName, pr.Title);
+                result.Add(repository);
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Repository> repositories = await _gitHubRepositoriesUtil.GetAllForOwner(username, cancellationToken).NoSync();
+        return await FilterRepositoriesWithFailedBuilds(repositories, cancellationToken).NoSync();
     }
 
     public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, CancellationToken cancellationToken = default)
