@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Soenneker.GitHub.Client.Abstract;
 using System.Collections.Generic;
 using System.Linq;
+using Soenneker.GitHub.Repositories.Abstract;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
@@ -16,11 +17,13 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
 {
     private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
     private readonly IGitHubClientUtil _gitHubClientUtil;
+    private readonly IGitHubRepositoriesUtil _gitHubRepositoriesUtil;
 
-    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil)
+    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil)
     {
         _logger = logger;
         _gitHubClientUtil = gitHubClientUtil;
+        _gitHubRepositoriesUtil = gitHubRepositoriesUtil;
     }
 
     public ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, CancellationToken cancellationToken = default)
@@ -96,5 +99,11 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         }
 
         return result;
+    }
+
+    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Repository> repositories = await _gitHubRepositoriesUtil.GetAllForOwner(owner, cancellationToken).NoSync();
+        return await FilterRepositoriesWithOpenPullRequests(repositories, cancellationToken).NoSync();
     }
 }

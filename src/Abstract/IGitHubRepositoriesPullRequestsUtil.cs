@@ -21,4 +21,6 @@ public interface IGitHubRepositoriesPullRequestsUtil
     ValueTask Approve(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
 
     ValueTask Approve(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
+
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, CancellationToken cancellationToken = default);
 }

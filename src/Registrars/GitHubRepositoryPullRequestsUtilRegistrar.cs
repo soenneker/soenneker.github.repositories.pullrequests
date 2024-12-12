@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Soenneker.GitHub.Client.Registrars;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
+using Soenneker.GitHub.Repositories.Registrars;
 
 namespace Soenneker.GitHub.Repositories.PullRequests.Registrars;
 
@@ -15,7 +15,7 @@ public static class GitHubRepositoriesPullRequestsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsSingleton(this IServiceCollection services)
     {
-        services.AddGitHubClientUtilAsSingleton();
+        services.AddGitHubRepositoriesUtilAsSingleton();
         services.TryAddSingleton<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
 
         return services;
@@ -26,7 +26,7 @@ public static class GitHubRepositoriesPullRequestsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsScoped(this IServiceCollection services)
     {
-        services.AddGitHubClientUtilAsSingleton();
+        services.AddGitHubRepositoriesUtilAsScoped();
         services.TryAddScoped<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
 
         return services;
