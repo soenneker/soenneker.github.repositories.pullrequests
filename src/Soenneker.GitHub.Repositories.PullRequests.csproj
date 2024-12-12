@@ -13,7 +13,7 @@
         <Version Condition="'$(BUILD_VERSION)' != ''">$(BUILD_VERSION)</Version>
         <AssemblyName>Soenneker.GitHub.Repositories.PullRequests</AssemblyName>
         <PackageId>Soenneker.GitHub.Repositories.PullRequests</PackageId>
-        <PackageTags>github repositories pullrequests repository repo utilities util pull requests githubrepositorypullrequestsutil csharp dotnet c# .net</PackageTags>
+        <PackageTags>github repositories pullrequests repository repo utilities util pull requests githubrepositoriespullrequestsutil csharp dotnet c# .net</PackageTags>
         <Copyright>Copyright © 2024 Jake Soenneker</Copyright>
         <Authors>Jake Soenneker</Authors>
         <Company>https://soenneker.com</Company>

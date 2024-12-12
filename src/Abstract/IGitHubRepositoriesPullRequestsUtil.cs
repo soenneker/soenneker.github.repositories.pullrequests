@@ -8,7 +8,7 @@ namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
 /// <summary>
 /// A utility library for GitHub repository pull request related operations
 /// </summary>
-public interface IGitHubRepositoryPullRequestsUtil
+public interface IGitHubRepositoriesPullRequestsUtil
 {
     ValueTask<IReadOnlyList<PullRequest>> GetPullRequests(Repository repository, string? username = null, CancellationToken cancellationToken = default);
 

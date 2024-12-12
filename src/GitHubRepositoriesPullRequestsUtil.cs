@@ -11,13 +11,13 @@ using System.Linq;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
-/// <inheritdoc cref="IGitHubRepositoryPullRequestsUtil"/>
-public class GitHubRepositoryPullRequestsUtil : IGitHubRepositoryPullRequestsUtil
+/// <inheritdoc cref="IGitHubRepositoriesPullRequestsUtil"/>
+public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequestsUtil
 {
-    private readonly ILogger<GitHubRepositoryPullRequestsUtil> _logger;
+    private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
     private readonly IGitHubClientUtil _gitHubClientUtil;
 
-    public GitHubRepositoryPullRequestsUtil(ILogger<GitHubRepositoryPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil)
+    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil)
     {
         _logger = logger;
         _gitHubClientUtil = gitHubClientUtil;

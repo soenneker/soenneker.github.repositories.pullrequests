@@ -8,23 +8,23 @@ namespace Soenneker.GitHub.Repositories.PullRequests.Registrars;
 /// <summary>
 /// A utility library for GitHub repository pull request related operations
 /// </summary>
-public static class GitHubRepositoryPullRequestsUtilRegistrar
+public static class GitHubRepositoriesPullRequestsUtilRegistrar
 {
     /// <summary>
-    /// Adds <see cref="IGitHubRepositoryPullRequestsUtil"/> as a singleton service. <para/>
+    /// Adds <see cref="IGitHubRepositoriesPullRequestsUtil"/> as a singleton service. <para/>
     /// </summary>
-    public static void AddGitHubRepositoryPullRequestsUtilAsSingleton(this IServiceCollection services)
+    public static void AddGitHubRepositoriesPullRequestsUtilAsSingleton(this IServiceCollection services)
     {
         services.AddGitHubClientUtilAsSingleton();
-        services.TryAddSingleton<IGitHubRepositoryPullRequestsUtil, GitHubRepositoryPullRequestsUtil>();
+        services.TryAddSingleton<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
     }
 
     /// <summary>
-    /// Adds <see cref="IGitHubRepositoryPullRequestsUtil"/> as a scoped service. <para/>
+    /// Adds <see cref="IGitHubRepositoriesPullRequestsUtil"/> as a scoped service. <para/>
     /// </summary>
-    public static void AddGitHubRepositoryPullRequestsUtilAsScoped(this IServiceCollection services)
+    public static void AddGitHubRepositoriesPullRequestsUtilAsScoped(this IServiceCollection services)
     {
         services.AddGitHubClientUtilAsSingleton();
-        services.TryAddScoped<IGitHubRepositoryPullRequestsUtil, GitHubRepositoryPullRequestsUtil>();
+        services.TryAddScoped<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
     }
 }
