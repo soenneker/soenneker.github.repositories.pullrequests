@@ -44,6 +44,6 @@
     <ItemGroup>
         <PackageReference Include="Soenneker.Extensions.Enumerable.String" Version="3.0.738" />
         <PackageReference Include="Soenneker.GitHub.Repositories" Version="3.0.26" />
-        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="3.0.22" />
+        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="3.0.24" />
     </ItemGroup>
 </Project>
