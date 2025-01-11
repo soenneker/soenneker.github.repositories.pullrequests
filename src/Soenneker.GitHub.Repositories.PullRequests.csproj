@@ -42,7 +42,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.GitHub.Repositories" Version="3.0.127" />
+        <PackageReference Include="Soenneker.GitHub.Repositories" Version="3.0.131" />
         <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="3.0.110" />
     </ItemGroup>
 </Project>
