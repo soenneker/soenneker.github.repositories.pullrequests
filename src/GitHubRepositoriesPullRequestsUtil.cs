@@ -10,6 +10,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Soenneker.GitHub.Repositories.Abstract;
 using Soenneker.GitHub.Repositories.Runs.Abstract;
+using System;
+using Soenneker.Extensions.DateTime;
+using Soenneker.Extensions.DateTimeOffset;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
@@ -39,8 +42,93 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
     {
         GitHubClient client = await _gitHubClientUtil.Get(cancellationToken).NoSync();
 
-        IReadOnlyList<PullRequest>? pullRequests = await client.PullRequest.GetAllForRepository(owner, name, new PullRequestRequest {State = ItemStateFilter.Open}).NoSync();
-        return username == null ? pullRequests : pullRequests.Where(pr => pr.User.Login == username).ToList();
+        var allPullRequests = new List<PullRequest>();
+        var page = 1;
+        const int pageSize = 100; // GitHub's maximum per-page limit
+
+        while (true)
+        {
+            IReadOnlyList<PullRequest> pullRequests = await client.PullRequest.GetAllForRepository(
+                owner,
+                name,
+                new PullRequestRequest { State = ItemStateFilter.Open },
+                new ApiOptions
+                {
+                    PageSize = pageSize,
+                    PageCount = 1,
+                    StartPage = page
+                }
+            ).NoSync();
+
+            if (pullRequests.Count == 0)
+            {
+                break; // Exit the loop if no more results
+            }
+
+            allPullRequests.AddRange(pullRequests);
+
+            if (pullRequests.Count < pageSize)
+            {
+                break; // Exit the loop if this was the last page
+            }
+
+            page++;
+        }
+
+        return username == null
+            ? allPullRequests
+            : allPullRequests.Where(pr => pr.User.Login == username).ToList();
+    }
+
+    public async ValueTask<List<PullRequest>> GetAllBetween(string owner, string name, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<PullRequest> pullRequests = await GetAll(owner, name, username, cancellationToken).NoSync();
+
+        var result = new List<PullRequest>();
+
+        foreach (PullRequest pullRequest in pullRequests)
+        {
+            if (pullRequest.CreatedAt.ToUtcDateTime().IsBetween(startAt, endAt))
+            {
+                result.Add(pullRequest);
+            }
+        }
+
+        return result;
+    }
+
+    public async ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Repository> allRepos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, cancellationToken);
+
+        var allPullRequests = new List<PullRequest>();
+
+        foreach (Repository repo in allRepos)
+        {
+            IReadOnlyList<PullRequest> pullRequests = await GetAll(repo, username, cancellationToken);
+
+            allPullRequests.AddRange(pullRequests);
+        }
+
+        return allPullRequests;
+    }
+
+    public async ValueTask<List<PullRequest>> GetAllForOwnerBetween(string owner, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Repository> allRepos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, cancellationToken);
+
+        List<Repository> filteredRepos = allRepos.Where(c => c.CreatedAt.ToUtcDateTime().IsBetween(startAt, endAt)).ToList();
+
+        var result = new List<PullRequest>();
+
+        foreach (Repository repo in filteredRepos)
+        {
+            IReadOnlyList<PullRequest> pullRequests = await GetAllBetween(owner, repo.Name, startAt, endAt, username, cancellationToken);
+
+            result.AddRange(pullRequests);
+        }
+
+        return result;
     }
 
     public ValueTask ApproveAll(Repository repository, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default)
@@ -63,7 +151,7 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
             await Approve(owner, name, pr, message, cancellationToken).NoSync();
 
             if (delayMs > 0)
-                await Task.Delay(delayMs, cancellationToken);
+                await Task.Delay(delayMs, cancellationToken).NoSync();
         }
     }
 

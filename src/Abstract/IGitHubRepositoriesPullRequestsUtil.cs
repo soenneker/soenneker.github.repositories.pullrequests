@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Diagnostics.Contracts;
+using System;
 
 namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
 
@@ -35,6 +36,15 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// </returns>
     [Pure]
     ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, CancellationToken cancellationToken = default);
+
+    [Pure]
+    ValueTask<List<PullRequest>> GetAllBetween(string owner, string name, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default);
+
+    [Pure]
+    ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, CancellationToken cancellationToken = default);
+
+    [Pure]
+    ValueTask<List<PullRequest>> GetAllForOwnerBetween(string owner, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Approves all pull requests for a specific repository.
