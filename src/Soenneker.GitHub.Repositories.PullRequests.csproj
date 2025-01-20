@@ -42,9 +42,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Extensions.DateTime" Version="3.0.1282" />
+        <PackageReference Include="Soenneker.Extensions.DateTime" Version="3.0.1287" />
         <PackageReference Include="Soenneker.Extensions.DateTimeOffset" Version="3.0.328" />
-        <PackageReference Include="Soenneker.GitHub.Repositories" Version="3.0.227" />
+        <PackageReference Include="Soenneker.GitHub.Repositories" Version="3.0.230" />
         <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="3.0.194" />
     </ItemGroup>
 </Project>
