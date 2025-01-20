@@ -16,29 +16,31 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Retrieves all pull requests for a specific repository.
     /// </summary>
     /// <param name="repository">The repository from which to retrieve pull requests.</param>
+    /// <param name="log"></param>
     /// <param name="username">Optional username to filter the pull requests by author.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A <see cref="ValueTask{TResult}"/> containing a read-only list of pull requests for the repository.
     /// </returns>
     [Pure]
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, bool log = true, string? username = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all pull requests for a repository identified by its owner and name.
     /// </summary>
     /// <param name="owner">The username or organization name of the repository owner.</param>
     /// <param name="name">The name of the repository.</param>
+    /// <param name="log"></param>
     /// <param name="username">Optional username to filter the pull requests by author.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>
     /// A <see cref="ValueTask{TResult}"/> containing a read-only list of pull requests for the specified repository.
     /// </returns>
     [Pure]
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, bool log = true, string? username = null, CancellationToken cancellationToken = default);
 
     [Pure]
-    ValueTask<List<PullRequest>> GetAllBetween(string owner, string name, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default);
+    ValueTask<List<PullRequest>> GetAllBetween(string owner, string name, DateTime startAt, DateTime endAt, bool log = true, string? username = null, CancellationToken cancellationToken = default);
 
     [Pure]
     ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, CancellationToken cancellationToken = default);
