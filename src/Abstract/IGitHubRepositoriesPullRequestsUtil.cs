@@ -2,7 +2,6 @@ using Octokit;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Diagnostics.Contracts;
 using System;
 
 namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
@@ -13,119 +12,145 @@ namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
 public interface IGitHubRepositoriesPullRequestsUtil
 {
     /// <summary>
-    /// Retrieves all pull requests for a specific repository.
+    /// Retrieves all pull requests for the specified repository.
     /// </summary>
-    /// <param name="repository">The repository from which to retrieve pull requests.</param>
-    /// <param name="log"></param>
-    /// <param name="username">Optional username to filter the pull requests by author.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// A <see cref="ValueTask{TResult}"/> containing a read-only list of pull requests for the repository.
-    /// </returns>
-    [Pure]
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, bool log = true, string? username = null, CancellationToken cancellationToken = default);
+    /// <param name="repository">The repository to retrieve pull requests for.</param>
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of matching pull requests.</returns>
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all pull requests for a repository identified by its owner and name.
+    /// Retrieves all pull requests for a specific repository by owner and name.
     /// </summary>
-    /// <param name="owner">The username or organization name of the repository owner.</param>
+    /// <param name="owner">The owner of the repository.</param>
     /// <param name="name">The name of the repository.</param>
-    /// <param name="log"></param>
-    /// <param name="username">Optional username to filter the pull requests by author.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// A <see cref="ValueTask{TResult}"/> containing a read-only list of pull requests for the specified repository.
-    /// </returns>
-    [Pure]
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, bool log = true, string? username = null, CancellationToken cancellationToken = default);
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of matching pull requests.</returns>
+    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
-    [Pure]
-    ValueTask<List<PullRequest>> GetAllBetween(string owner, string name, DateTime startAt, DateTime endAt, bool log = true, string? username = null, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves all pull requests for all repositories owned by the specified owner.
+    /// </summary>
+    /// <param name="owner">The owner of the repositories.</param>
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of pull requests across all repositories.</returns>
+    ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, CancellationToken cancellationToken = default);
 
-    [Pure]
-    ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves all non-approved pull requests for a specific repository.
+    /// </summary>
+    /// <param name="owner">The owner of the repository.</param>
+    /// <param name="name">The name of the repository.</param>
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of non-approved pull requests.</returns>
+    ValueTask<List<PullRequest>> GetAllNonApproved(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
-    [Pure]
-    ValueTask<List<PullRequest>> GetAllForOwnerBetween(string owner, DateTime startAt, DateTime endAt, string? username = null, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Retrieves all non-approved pull requests across all repositories owned by the specified owner.
+    /// </summary>
+    /// <param name="owner">The owner of the repositories.</param>
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of non-approved pull requests across all repositories.</returns>
+    ValueTask<List<PullRequest>> GetAllNonApprovedForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Determines whether a pull request has been approved.
+    /// </summary>
+    /// <param name="owner">The owner of the repository.</param>
+    /// <param name="repo">The name of the repository.</param>
+    /// <param name="pullRequestNumber">The number of the pull request.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>True if the pull request is approved; otherwise, false.</returns>
+    ValueTask<bool> IsApproved(string owner, string repo, int pullRequestNumber, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Approves all pull requests for a specific repository.
     /// </summary>
-    /// <param name="repository">The repository containing the pull requests to approve.</param>
-    /// <param name="message">The approval message to include with each pull request.</param>
-    /// <param name="username">Optional username to filter the pull requests by author.</param>
-    /// <param name="delayMs">Optional delay in milliseconds between approving each pull request to avoid rate limits.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-    ValueTask ApproveAll(Repository repository, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
+    /// <param name="repository">The repository containing the pull requests.</param>
+    /// <param name="message">The approval message.</param>
+    /// <param name="username">Optional: The username of the pull request author.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="delayMs">Optional: Delay in milliseconds between approvals.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    ValueTask ApproveAll(Repository repository, string message, string? username = null, DateTime? startAt = null, DateTime? endAt = null, int delayMs = 0,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Approves all pull requests for a repository identified by its owner and name.
+    /// Approves a specific pull request.
     /// </summary>
-    /// <param name="owner">The username or organization name of the repository owner.</param>
-    /// <param name="name">The name of the repository containing the pull requests to approve.</param>
-    /// <param name="message">The approval message to include with each pull request.</param>
-    /// <param name="username">Optional username to filter the pull requests by author.</param>
-    /// <param name="delayMs">Optional delay in milliseconds between approving each pull request to avoid rate limits.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-    ValueTask ApproveAll(string owner, string name, string message, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Approves a specific pull request in a repository.
-    /// </summary>
-    /// <param name="repository">The repository containing the pull request to approve.</param>
+    /// <param name="repository">The repository containing the pull request.</param>
     /// <param name="pullRequest">The pull request to approve.</param>
-    /// <param name="message">The approval message to include with the pull request.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
+    /// <param name="message">The approval message.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
     ValueTask Approve(Repository repository, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Approves a specific pull request in a repository identified by its owner and name.
-    /// </summary>
-    /// <param name="owner">The username or organization name of the repository owner.</param>
-    /// <param name="name">The name of the repository containing the pull request to approve.</param>
-    /// <param name="pullRequest">The pull request to approve.</param>
-    /// <param name="message">The approval message to include with the pull request.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A <see cref="ValueTask"/> representing the asynchronous operation.</returns>
-    ValueTask Approve(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Filters repositories that have pull requests with failed builds.
+    /// Filters repositories to include only those with open pull requests.
     /// </summary>
     /// <param name="repositories">The list of repositories to filter.</param>
-    /// <param name="log"></param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with failed pull request builds.
-    /// </returns>
-    [Pure]
-    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, bool log = true, CancellationToken cancellationToken = default);
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of repositories with open pull requests.</returns>
+    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithOpenPullRequests(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all repositories that have open pull requests with failed builds for a specific user.
+    /// Filters repositories to include only those with failed builds on open pull requests.
     /// </summary>
-    /// <param name="username">The username to filter the repositories by.</param>
-    /// <param name="log"></param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with failed builds on open pull requests.
-    /// </returns>
-    [Pure]
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, bool log = true, CancellationToken cancellationToken = default);
+    /// <param name="repositories">The list of repositories to filter.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of repositories with failed builds on open pull requests.</returns>
+    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Retrieves all repositories with open pull requests for a specific owner.
+    /// Retrieves all repositories with failed builds on open pull requests for a specified owner.
     /// </summary>
-    /// <param name="owner">The username or organization name of the repository owner.</param>
-    /// <param name="log"></param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>
-    /// A <see cref="ValueTask{TResult}"/> containing a read-only list of repositories with open pull requests.
-    /// </returns>
-    [Pure]
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, bool log = true, CancellationToken cancellationToken = default);
+    /// <param name="username">The username of the repository owner.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of repositories with failed builds on open pull requests.</returns>
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Retrieves all repositories with open pull requests for a specified owner.
+    /// </summary>
+    /// <param name="owner">The username of the repository owner.</param>
+    /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
+    /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
+    /// <param name="cancellationToken">Optional: Cancellation token.</param>
+    /// <returns>A list of repositories with open pull requests.</returns>
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default);
 }
