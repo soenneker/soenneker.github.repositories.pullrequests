@@ -16,9 +16,9 @@ public static class GitHubRepositoriesPullRequestsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsSingleton(this IServiceCollection services)
     {
-        services.AddGitHubRepositoriesUtilAsSingleton();
-        services.AddGitHubRepositoriesRunsUtilAsSingleton();
-        services.TryAddSingleton<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
+        services.AddGitHubRepositoriesUtilAsSingleton()
+                .AddGitHubRepositoriesRunsUtilAsSingleton()
+                .TryAddSingleton<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
 
         return services;
     }
@@ -28,9 +28,9 @@ public static class GitHubRepositoriesPullRequestsUtilRegistrar
     /// </summary>
     public static IServiceCollection AddGitHubRepositoriesPullRequestsUtilAsScoped(this IServiceCollection services)
     {
-        services.AddGitHubRepositoriesUtilAsScoped();
-        services.AddGitHubRepositoriesRunsUtilAsScoped();
-        services.TryAddScoped<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
+        services.AddGitHubRepositoriesUtilAsScoped()
+                .AddGitHubRepositoriesRunsUtilAsScoped()
+                .TryAddScoped<IGitHubRepositoriesPullRequestsUtil, GitHubRepositoriesPullRequestsUtil>();
 
         return services;
     }
