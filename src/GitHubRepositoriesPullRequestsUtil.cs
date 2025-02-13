@@ -24,8 +24,8 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
     private readonly IGitHubRepositoriesUtil _gitHubRepositoriesUtil;
     private readonly IGitHubRepositoriesRunsUtil _gitHubRepositoriesRunsUtil;
 
-    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil,
-        IGitHubRepositoriesRunsUtil gitHubRepositoriesRunsUtil)
+    public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger, IGitHubClientUtil gitHubClientUtil,
+        IGitHubRepositoriesUtil gitHubRepositoriesUtil, IGitHubRepositoriesRunsUtil gitHubRepositoriesRunsUtil)
     {
         _logger = logger;
         _gitHubClientUtil = gitHubClientUtil;
@@ -33,19 +33,19 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         _gitHubRepositoriesRunsUtil = gitHubRepositoriesRunsUtil;
     }
 
-    public ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, DateTime? startAt = null, DateTime? endAt = null,
+        bool log = true, CancellationToken cancellationToken = default)
     {
         return GetAll(repository.Owner.Login, repository.Name, username, startAt, endAt, log, cancellationToken);
     }
 
-    public async ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, DateTime? startAt = null,
+        DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
-        GitHubClient client = await _gitHubClientUtil.Get(cancellationToken).NoSync();
-
         if (log)
-            _logger.LogDebug("Getting all PRs for {owner}/{name}...", owner, name);
+            _logger.LogDebug("Getting all GitHub PRs for {owner}/{name}...", owner, name);
+
+        GitHubClient client = await _gitHubClientUtil.Get(cancellationToken).NoSync();
 
         var result = new List<PullRequest>();
         var page = 1;
@@ -53,17 +53,14 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
 
         while (true)
         {
-            IReadOnlyList<PullRequest> pullRequests = await client.PullRequest.GetAllForRepository(
-                owner,
-                name,
-                new PullRequestRequest {State = ItemStateFilter.Open},
-                new ApiOptions
-                {
-                    PageSize = pageSize,
-                    PageCount = 1,
-                    StartPage = page
-                }
-            ).NoSync();
+            IReadOnlyList<PullRequest> pullRequests = await client.PullRequest.GetAllForRepository(owner, name,
+                                                                      new PullRequestRequest {State = ItemStateFilter.Open}, new ApiOptions
+                                                                      {
+                                                                          PageSize = pageSize,
+                                                                          PageCount = 1,
+                                                                          StartPage = page
+                                                                      })
+                                                                  .NoSync();
 
             if (pullRequests.Count == 0)
             {
@@ -80,6 +77,9 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
                 {
                     if (pullRequest.CreatedAt.ToUtcDateTime() >= startAt.Value)
                     {
+                        if (log)
+                            _logger.LogInformation("PR #{number} created at {createdAt}", pullRequest.Number, pullRequest.CreatedAt);
+
                         result.Add(pullRequest);
                     }
                 }
@@ -90,6 +90,9 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
                 {
                     if (pullRequest.CreatedAt.ToUtcDateTime() <= endAt.Value)
                     {
+                        if (log)
+                            _logger.LogInformation("PR #{number} created at {createdAt}", pullRequest.Number, pullRequest.CreatedAt);
+
                         result.Add(pullRequest);
                     }
                 }
@@ -100,6 +103,9 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
                 {
                     if (pullRequest.CreatedAt.ToUtcDateTime().IsBetween(startAt.Value, endAt.Value))
                     {
+                        if (log)
+                            _logger.LogInformation("PR #{number} created at {createdAt}", pullRequest.Number, pullRequest.CreatedAt);
+
                         result.Add(pullRequest);
                     }
                 }
@@ -113,22 +119,22 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
             page++;
         }
 
-        return username == null
-            ? result
-            : result.Where(pr => pr.User.Login == username).ToList();
+        return username == null ? result : result.Where(pr => pr.User.Login == username).ToList();
     }
 
-    public async ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, CancellationToken cancellationToken = default)
+    public async ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null,
+        bool log = false, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<Repository> repos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, null, endAt, cancellationToken);
+        if (log)
+            _logger.LogInformation("Getting all GitHub PRs for for owner ({owner})...", owner);
 
-        _logger.LogInformation("Getting all GitHub PRs for for owner ({owner})...", owner);
+        IReadOnlyList<Repository> repos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, null, endAt, cancellationToken);
 
         var allPullRequests = new List<PullRequest>();
 
         foreach (Repository repo in repos)
         {
-            IReadOnlyList<PullRequest> pullRequests = await GetAll(repo, username, startAt, endAt, false, cancellationToken);
+            IReadOnlyList<PullRequest> pullRequests = await GetAll(repo, username, startAt, endAt, log, cancellationToken);
 
             allPullRequests.AddRange(pullRequests);
         }
@@ -136,8 +142,8 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         return allPullRequests;
     }
 
-    public async ValueTask<List<PullRequest>> GetAllNonApproved(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<List<PullRequest>> GetAllNonApproved(string owner, string name, string? username = null, DateTime? startAt = null,
+        DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, log, cancellationToken).NoSync();
 
@@ -155,17 +161,18 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
     }
 
     public async ValueTask<List<PullRequest>> GetAllNonApprovedForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null,
-        CancellationToken cancellationToken = default)
+        bool log = true, CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<Repository> repos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, null, endAt, cancellationToken).NoSync();
+        if (log)
+            _logger.LogInformation("Getting all non-approved GitHub PRs for owner ({owner})...", owner);
 
-        _logger.LogInformation("Getting all non-approved GitHub PRs for owner ({owner})...", owner);
+        IReadOnlyList<Repository> repos = await _gitHubRepositoriesUtil.GetAllForOwner(owner, null, endAt, cancellationToken).NoSync();
 
         var result = new List<PullRequest>();
 
         foreach (Repository repo in repos)
         {
-            IReadOnlyList<PullRequest> pullRequests = await GetAllNonApproved(owner, repo.Name, username, startAt, endAt, false, cancellationToken);
+            IReadOnlyList<PullRequest> pullRequests = await GetAllNonApproved(owner, repo.Name, username, startAt, endAt, log, cancellationToken);
 
             result.AddRange(pullRequests);
         }
@@ -182,14 +189,14 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         return reviews.Any(review => review.State == PullRequestReviewState.Approved);
     }
 
-    public ValueTask ApproveAll(Repository repository, string message, string? username = null, DateTime? startAt = null, DateTime? endAt = null, int delayMs = 0,
-        CancellationToken cancellationToken = default)
+    public ValueTask ApproveAll(Repository repository, string message, string? username = null, DateTime? startAt = null, DateTime? endAt = null,
+        int delayMs = 0, CancellationToken cancellationToken = default)
     {
         return ApproveAll(repository.Owner.Login, repository.Name, message, startAt, endAt, username, delayMs, cancellationToken);
     }
 
-    public async ValueTask ApproveAll(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null, int delayMs = 0,
-        CancellationToken cancellationToken = default)
+    public async ValueTask ApproveAll(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null,
+        int delayMs = 0, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, true, cancellationToken).NoSync();
 
@@ -228,8 +235,8 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         _logger.LogInformation("Approved PR #{number} ({message})", pullRequest.Number, message);
     }
 
-    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithOpenPullRequests(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithOpenPullRequests(IReadOnlyList<Repository> repositories, DateTime? startAt = null,
+        DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         var result = new List<Repository>();
 
@@ -249,8 +256,8 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         return result;
     }
 
-    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, DateTime? startAt = null,
+        DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         var result = new List<Repository>();
 
@@ -276,15 +283,15 @@ public class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequest
         return result;
     }
 
-    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, DateTime? startAt = null,
+        DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<Repository> repositories = await _gitHubRepositoriesUtil.GetAllForOwner(username, null, endAt, cancellationToken).NoSync();
         return await FilterRepositoriesWithFailedBuilds(repositories, startAt, endAt, log, cancellationToken).NoSync();
     }
 
-    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null,
+        bool log = true, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<Repository> repositories = await _gitHubRepositoriesUtil.GetAllForOwner(owner, null, endAt, cancellationToken).NoSync();
         return await FilterRepositoriesWithOpenPullRequests(repositories, startAt, endAt, log, cancellationToken).NoSync();

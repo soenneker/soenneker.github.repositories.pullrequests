@@ -45,9 +45,10 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// <param name="username">Optional: The username of the pull request author.</param>
     /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
     /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
     /// <param name="cancellationToken">Optional: Cancellation token.</param>
     /// <returns>A list of pull requests across all repositories.</returns>
-    ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, CancellationToken cancellationToken = default);
+    ValueTask<List<PullRequest>> GetAllForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all non-approved pull requests for a specific repository.
@@ -70,9 +71,10 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// <param name="username">Optional: The username of the pull request author.</param>
     /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
     /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
+    /// <param name="log">Optional: Whether to log the operation.</param>
     /// <param name="cancellationToken">Optional: Cancellation token.</param>
     /// <returns>A list of non-approved pull requests across all repositories.</returns>
-    ValueTask<List<PullRequest>> GetAllNonApprovedForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, CancellationToken cancellationToken = default);
+    ValueTask<List<PullRequest>> GetAllNonApprovedForOwner(string owner, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines whether a pull request has been approved.
