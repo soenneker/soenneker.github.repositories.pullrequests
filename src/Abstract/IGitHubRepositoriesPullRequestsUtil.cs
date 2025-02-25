@@ -135,13 +135,13 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// <summary>
     /// Retrieves all repositories with failed builds on open pull requests for a specified owner.
     /// </summary>
-    /// <param name="username">The username of the repository owner.</param>
+    /// <param name="owner">The owner of the repository owner.</param>
     /// <param name="startAt">Optional: The start date for filtering pull requests.</param>
     /// <param name="endAt">Optional: The end date for filtering pull requests.</param>
     /// <param name="log">Optional: Whether to log the operation.</param>
     /// <param name="cancellationToken">Optional: Cancellation token.</param>
     /// <returns>A list of repositories with failed builds on open pull requests.</returns>
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string username, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
+    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
