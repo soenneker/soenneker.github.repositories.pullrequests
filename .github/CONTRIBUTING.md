@@ -1,4 +1,4 @@
-# Contributing to Soenneker.GitHub.Repositories.PullRequests
+﻿# Contributing to Soenneker.GitHub.Repositories.PullRequests
 
 We're excited that you're interested in contributing!
 
