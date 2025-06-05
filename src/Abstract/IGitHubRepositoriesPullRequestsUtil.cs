@@ -14,12 +14,12 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// <summary>
     /// Gets all pull requests for a specific repository.
     /// </summary>
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(Repository repository, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<PullRequest>> GetAll(Repository repository, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all pull requests for a specific repository by owner and name.
     /// </summary>
-    ValueTask<IReadOnlyList<PullRequest>> GetAll(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<PullRequest>> GetAll(string owner, string name, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all pull requests for a specific owner across all their repositories.
@@ -64,20 +64,20 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// <summary>
     /// Filters a list of repositories to only those with open pull requests.
     /// </summary>
-    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithOpenPullRequests(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<Repository>> FilterRepositoriesWithOpenPullRequests(List<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Filters a list of repositories to only those with failed CI builds on any pull request.
     /// </summary>
-    ValueTask<IReadOnlyList<Repository>> FilterRepositoriesWithFailedBuilds(IReadOnlyList<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<Repository>> FilterRepositoriesWithFailedBuilds(List<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all repositories for a given owner with at least one open pull request that has a failed build.
     /// </summary>
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all repositories for a given owner with at least one open pull request.
     /// </summary>
-    ValueTask<IReadOnlyList<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+    ValueTask<List<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
 }
