@@ -131,13 +131,13 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 if (endAt != null && pr.CreatedAt > endAt)
                     continue;
 
-                allPullRequests.Add(new PullRequest
+                // Get full pull request details
+                PullRequest? fullPr = await client.Repos[owner][name].Pulls[pr.Number ?? 0].GetAsync(cancellationToken: cancellationToken).NoSync();
+
+                if (fullPr != null)
                 {
-                    Number = pr.Number,
-                    Title = pr.Title,
-                    CreatedAt = pr.CreatedAt,
-                    User = pr.User
-                });
+                    allPullRequests.Add(fullPr);
+                }
             }
 
             page++;
