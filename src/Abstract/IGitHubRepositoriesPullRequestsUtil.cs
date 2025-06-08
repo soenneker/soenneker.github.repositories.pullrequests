@@ -80,4 +80,19 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Gets all repositories for a given owner with at least one open pull request.
     /// </summary>
     ValueTask<List<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Merges a specific pull request.
+    /// </summary>
+    ValueTask Merge(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Merges all pull requests for a specific repository.
+    /// </summary>
+    ValueTask MergeAll(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Merges all pull requests with passing checks for a specific repository.
+    /// </summary>
+    ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
 }

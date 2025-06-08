@@ -5,6 +5,7 @@ using Soenneker.GitHub.ClientUtil.Abstract;
 using Soenneker.GitHub.OpenApiClient;
 using Soenneker.GitHub.OpenApiClient.Models;
 using Soenneker.GitHub.OpenApiClient.Repos.Item.Item.Pulls.Item.Reviews;
+using Soenneker.GitHub.OpenApiClient.Repos.Item.Item.Pulls.Item.Merge;
 using Soenneker.GitHub.Repositories.Abstract;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
 using Soenneker.GitHub.Repositories.Runs.Abstract;
@@ -340,5 +341,66 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         int delayMs = 0, CancellationToken cancellationToken = default)
     {
         await ApproveAll(repository.Owner.Login, repository.Name, message, startAt, endAt, username, delayMs, cancellationToken).NoSync();
+    }
+
+    public async ValueTask Merge(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Merging PR #{number} ({message})...", pullRequest.Number, message);
+
+        GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken).NoSync();
+
+        var mergeRequest = new MergePutRequestBody
+        {
+            MergeMethod = MergePutRequestBody_merge_method.Squash,
+            CommitMessage = message
+        };
+
+        await client.Repos[owner][name].Pulls[pullRequest.Number ?? 0].Merge.PutAsync(mergeRequest, cancellationToken: cancellationToken).NoSync();
+
+        _logger.LogInformation("Merged PR #{number} ({message})", pullRequest.Number, message);
+    }
+
+    public async ValueTask MergeAll(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null,
+        int delayMs = 0, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Merging all PRs for {owner}/{name}...", owner, name);
+
+        List<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, false, cancellationToken).NoSync();
+
+        foreach (PullRequest pr in pullRequests)
+        {
+            await Merge(owner, name, pr, message, cancellationToken).NoSync();
+
+            if (delayMs > 0)
+                await DelayUtil.Delay(delayMs, _logger, cancellationToken).NoSync();
+        }
+
+        _logger.LogInformation("Merged all PRs for {owner}/{name}", owner, name);
+    }
+
+    public async ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null,
+        int delayMs = 0, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Merging all PRs with passing checks for {owner}/{name}...", owner, name);
+
+        List<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, false, cancellationToken).NoSync();
+
+        foreach (PullRequest pr in pullRequests)
+        {
+            // Check if the PR has any failed runs
+            if (!await _gitHubRepositoriesRunsUtil.HasFailedRun(new Repository { Owner = new SimpleUser { Login = owner }, Name = name }, pr, cancellationToken).NoSync())
+            {
+                await Merge(owner, name, pr, message, cancellationToken).NoSync();
+
+                if (delayMs > 0)
+                    await DelayUtil.Delay(delayMs, _logger, cancellationToken).NoSync();
+            }
+            else
+            {
+                _logger.LogWarning("Skipping PR #{number} due to failed checks", pr.Number);
+            }
+        }
+
+        _logger.LogInformation("Merged all PRs with passing checks for {owner}/{name}", owner, name);
     }
 }
