@@ -12,6 +12,7 @@ using Soenneker.GitHub.Repositories.Runs.Abstract;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Soenneker.Utils.Delay;
@@ -185,6 +186,39 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         return result;
     }
 
+    private async ValueTask<bool> CheckForFailedBuilds(Repository repo, PullRequest pr, bool log, CancellationToken cancellationToken)
+    {
+        try
+        {
+            bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(repo, pr, cancellationToken).NoSync();
+            
+            if (hasFailedRun && log)
+            {
+                _logger.LogInformation("Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build", 
+                    repo.FullName, pr.Number, pr.Title);
+            }
+            
+            return hasFailedRun;
+        }
+        catch (JsonException ex)
+        {
+            string? rawJson = ex.Source?.ToString();
+            _logger.LogError(ex, 
+                "Failed to deserialize check run data for PR #{PrNumber} in repository {RepoFullName}. " +
+                "Error: {ErrorMessage}. Path: {JsonPath}. Raw JSON: {RawJson}", 
+                pr.Number, repo.FullName, ex.Message, ex.Path, rawJson ?? "Not available");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, 
+                "Unexpected error checking failed runs for PR #{PrNumber} in repository {RepoFullName}. " +
+                "Error: {ErrorMessage}. Exception Type: {ExceptionType}", 
+                pr.Number, repo.FullName, ex.Message, ex.GetType().Name);
+            return false;
+        }
+    }
+
     public async ValueTask<List<Repository>> FilterRepositoriesWithFailedBuilds(List<Repository> repositories, DateTime? startAt = null, DateTime? endAt = null,
         bool log = true, CancellationToken cancellationToken = default)
     {
@@ -194,18 +228,28 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
         foreach ((Repository repo, List<PullRequest> prs) in pullRequestsByRepo)
         {
-            foreach (PullRequest pr in prs)
+            try
             {
-                if (await _gitHubRepositoriesRunsUtil.HasFailedRun(repo, pr, cancellationToken).NoSync())
+                foreach (PullRequest pr in prs)
                 {
-                    if (log)
-                        _logger.LogInformation("Repository ({repo}) has a PR ({title}) with a failed build", repo.FullName, pr.Title);
-
-                    result.Add(repo);
-                    break;
+                    if (await CheckForFailedBuilds(repo, pr, log, cancellationToken).NoSync())
+                    {
+                        result.Add(repo);
+                        break;
+                    }
                 }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, 
+                    "Failed to process repository {RepoFullName}. Error: {ErrorMessage}. Exception Type: {ExceptionType}", 
+                    repo.FullName, ex.Message, ex.GetType().Name);
+            }
         }
+
+        if (log)
+            _logger.LogInformation("Found {Count} repositories with failed builds out of {TotalRepos} repositories", 
+                result.Count, repositories.Count);
 
         return result;
     }
@@ -214,17 +258,30 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         if (log)
-            _logger.LogInformation("Getting all repositories with failed builds on open PRs for owner {owner}...", owner);
+            _logger.LogInformation("Getting all repositories with failed builds on open PRs for owner {Owner} (Start: {StartAt}, End: {EndAt})...", 
+                owner, startAt, endAt);
 
-        List<MinimalRepository> minimalRepositories = await _gitHubRepositoriesUtil.GetAllForOwner(owner, startAt, endAt, cancellationToken).NoSync();
-        List<Repository> repositories = ConvertToRepositories(minimalRepositories);
+        try
+        {
+            List<MinimalRepository> minimalRepositories = await _gitHubRepositoriesUtil.GetAllForOwner(owner, startAt, endAt, cancellationToken).NoSync();
+            List<Repository> repositories = ConvertToRepositories(minimalRepositories);
 
-        List<Repository> result = await FilterRepositoriesWithFailedBuilds(repositories, startAt, endAt, log, cancellationToken).NoSync();
+            if (log)
+                _logger.LogInformation("Fetched {Count} repositories for {Owner}", repositories.Count, owner);
 
-        if (log)
-            _logger.LogInformation("Found {count} repositories with failed builds on open PRs for owner {owner}", result.Count, owner);
+            List<Repository> result = await FilterRepositoriesWithFailedBuilds(repositories, startAt, endAt, log, cancellationToken).NoSync();
 
-        return result;
+            if (log)
+                _logger.LogInformation("Found {Count} repositories with failed builds on open PRs for owner {Owner}", result.Count, owner);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get repositories with failed builds for owner {Owner}. Error: {ErrorMessage}", 
+                owner, ex.Message);
+            throw;
+        }
     }
 
     public async ValueTask<List<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTime? startAt = null, DateTime? endAt = null,
