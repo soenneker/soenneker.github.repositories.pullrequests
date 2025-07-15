@@ -1,5 +1,7 @@
+using Soenneker.Facts.Local;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
 using Soenneker.Tests.FixturedUnit;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Soenneker.GitHub.Repositories.PullRequests.Tests;
@@ -18,5 +20,11 @@ public class GitHubRepositoriesPullRequestsUtilTests : FixturedUnitTest
     public void Default()
     {
 
+    }
+
+    [LocalFact]
+    public async ValueTask HasFailedRunOnOpenPullRequests()
+    { 
+        bool result = await _util.HasFailedRunOnOpenPullRequests("", "", true, CancellationToken);
     }
 }

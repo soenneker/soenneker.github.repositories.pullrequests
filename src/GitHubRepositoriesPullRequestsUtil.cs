@@ -86,10 +86,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         Dictionary<Repository, List<PullRequest>> pullRequestsByRepo =
             await GetPullRequestsForRepositories(repositories, username, startAt, endAt, cancellationToken).NoSync();
 
-        foreach ((Repository _, List<PullRequest> prs) in pullRequestsByRepo)
-        {
-            allPullRequests.AddRange(prs);
-        }
+        foreach ((Repository _, List<PullRequest> prs) in pullRequestsByRepo) allPullRequests.AddRange(prs);
 
         if (log)
             _logger.LogInformation("Found {count} PRs for owner {owner}", allPullRequests.Count, owner);
@@ -135,10 +132,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 // Get full pull request details
                 PullRequest? fullPr = await client.Repos[owner][name].Pulls[pr.Number ?? 0].GetAsync(cancellationToken: cancellationToken).NoSync();
 
-                if (fullPr != null)
-                {
-                    allPullRequests.Add(fullPr);
-                }
+                if (fullPr != null) allPullRequests.Add(fullPr);
             }
 
             page++;
@@ -173,7 +167,6 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             await GetPullRequestsForRepositories(repositories, null, startAt, endAt, cancellationToken).NoSync();
 
         foreach ((Repository repo, List<PullRequest> prs) in pullRequestsByRepo)
-        {
             if (prs.Count > 0)
             {
                 if (log)
@@ -181,7 +174,6 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                 result.Add(repo);
             }
-        }
 
         return result;
     }
@@ -191,30 +183,25 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         try
         {
             bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(repo, pr, cancellationToken).NoSync();
-            
+
             if (hasFailedRun && log)
-            {
-                _logger.LogInformation("Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build", 
-                    repo.FullName, pr.Number, pr.Title);
-            }
-            
+                _logger.LogInformation("Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build", repo.FullName, pr.Number, pr.Title);
+
             return hasFailedRun;
         }
         catch (JsonException ex)
         {
-            string? rawJson = ex.Source?.ToString();
-            _logger.LogError(ex, 
+            var rawJson = ex.Source?.ToString();
+            _logger.LogError(ex,
                 "Failed to deserialize check run data for PR #{PrNumber} in repository {RepoFullName}. " +
-                "Error: {ErrorMessage}. Path: {JsonPath}. Raw JSON: {RawJson}", 
-                pr.Number, repo.FullName, ex.Message, ex.Path, rawJson ?? "Not available");
+                "Error: {ErrorMessage}. Path: {JsonPath}. Raw JSON: {RawJson}", pr.Number, repo.FullName, ex.Message, ex.Path, rawJson ?? "Not available");
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, 
+            _logger.LogError(ex,
                 "Unexpected error checking failed runs for PR #{PrNumber} in repository {RepoFullName}. " +
-                "Error: {ErrorMessage}. Exception Type: {ExceptionType}", 
-                pr.Number, repo.FullName, ex.Message, ex.GetType().Name);
+                "Error: {ErrorMessage}. Exception Type: {ExceptionType}", pr.Number, repo.FullName, ex.Message, ex.GetType().Name);
             return false;
         }
     }
@@ -227,29 +214,23 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             await GetPullRequestsForRepositories(repositories, null, startAt, endAt, cancellationToken).NoSync();
 
         foreach ((Repository repo, List<PullRequest> prs) in pullRequestsByRepo)
-        {
             try
             {
                 foreach (PullRequest pr in prs)
-                {
                     if (await CheckForFailedBuilds(repo, pr, log, cancellationToken).NoSync())
                     {
                         result.Add(repo);
                         break;
                     }
-                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
-                    "Failed to process repository {RepoFullName}. Error: {ErrorMessage}. Exception Type: {ExceptionType}", 
-                    repo.FullName, ex.Message, ex.GetType().Name);
+                _logger.LogError(ex, "Failed to process repository {RepoFullName}. Error: {ErrorMessage}. Exception Type: {ExceptionType}", repo.FullName,
+                    ex.Message, ex.GetType().Name);
             }
-        }
 
         if (log)
-            _logger.LogInformation("Found {Count} repositories with failed builds out of {TotalRepos} repositories", 
-                result.Count, repositories.Count);
+            _logger.LogInformation("Found {Count} repositories with failed builds out of {TotalRepos} repositories", result.Count, repositories.Count);
 
         return result;
     }
@@ -258,8 +239,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         DateTime? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         if (log)
-            _logger.LogInformation("Getting all repositories with failed builds on open PRs for owner {Owner} (Start: {StartAt}, End: {EndAt})...", 
-                owner, startAt, endAt);
+            _logger.LogInformation("Getting all repositories with failed builds on open PRs for owner {Owner} (Start: {StartAt}, End: {EndAt})...", owner,
+                startAt, endAt);
 
         try
         {
@@ -278,8 +259,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get repositories with failed builds for owner {Owner}. Error: {ErrorMessage}", 
-                owner, ex.Message);
+            _logger.LogError(ex, "Failed to get repositories with failed builds for owner {Owner}. Error: {ErrorMessage}", owner, ex.Message);
             throw;
         }
     }
@@ -322,10 +302,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         var result = new List<PullRequest>();
 
         foreach (PullRequest pr in pullRequests)
-        {
             if (!await IsApproved(owner, name, pr.Number ?? 0, cancellationToken).NoSync())
                 result.Add(pr);
-        }
 
         if (log)
             _logger.LogInformation("Found {count} non-approved PRs for {owner}/{name}", result.Count, owner, name);
@@ -435,17 +413,17 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         _logger.LogInformation("Merged all PRs for {owner}/{name}", owner, name);
     }
 
-    public async ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null,
-        int delayMs = 0, CancellationToken cancellationToken = default)
+    public async ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null,
+        string? username = null, int delayMs = 0, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Merging all PRs with passing checks for {owner}/{name}...", owner, name);
 
         List<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, false, cancellationToken).NoSync();
 
         foreach (PullRequest pr in pullRequests)
-        {
             // Check if the PR has any failed runs
-            if (!await _gitHubRepositoriesRunsUtil.HasFailedRun(new Repository { Owner = new SimpleUser { Login = owner }, Name = name }, pr, cancellationToken).NoSync())
+            if (!await _gitHubRepositoriesRunsUtil.HasFailedRun(new Repository {Owner = new SimpleUser {Login = owner}, Name = name}, pr, cancellationToken)
+                                                  .NoSync())
             {
                 await Merge(owner, name, pr, message, cancellationToken).NoSync();
 
@@ -456,8 +434,38 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             {
                 _logger.LogWarning("Skipping PR #{number} due to failed checks", pr.Number);
             }
-        }
 
         _logger.LogInformation("Merged all PRs with passing checks for {owner}/{name}", owner, name);
+    }
+
+    public async ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log, CancellationToken cancellationToken)
+    {
+        try
+        {
+            List<PullRequest> pullRequests = await GetAll(owner, name, cancellationToken: cancellationToken).NoSync();
+
+            foreach (PullRequest pr in pullRequests)
+            {
+                bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(owner, name, pr, cancellationToken).NoSync();
+
+                if (hasFailedRun)
+                {
+                    if (log)
+                        _logger.LogInformation("Repository has a PR #{PrNumber} ({PrTitle}) with a failed build", pr.Number, pr.Title);
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
     }
 }

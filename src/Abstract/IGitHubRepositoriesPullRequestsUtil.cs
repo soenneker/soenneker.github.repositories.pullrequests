@@ -95,4 +95,6 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Merges all pull requests with passing checks for a specific repository.
     /// </summary>
     ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
+
+    ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log, CancellationToken cancellationToken);
 }
