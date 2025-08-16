@@ -107,11 +107,11 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
         while (true)
         {
-            List<PullRequestSimple>? pullRequests = await client.Repos[owner][name]
+                                                                            List<PullRequestSimple>? pullRequests = await client.Repos[owner][name]
                                                                 .Pulls.GetAsync(requestConfiguration =>
                                                                 {
                                                                     requestConfiguration.QueryParameters.Page = page;
-                                                                    requestConfiguration.QueryParameters.State = "open";
+                                                                    requestConfiguration.QueryParameters.State = Soenneker.GitHub.OpenApiClient.Repos.Item.Item.Pulls.GetStateQueryParameterType.Open;
                                                                 }, cancellationToken)
                                                                 .NoSync();
 
