@@ -96,5 +96,12 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// </summary>
     ValueTask MergeAllWithPassingChecks(string owner, string name, string message, DateTime? startAt = null, DateTime? endAt = null, string? username = null, int delayMs = 0, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Incrementally merges all pull requests for an owner across all their repositories.
+    /// Gets all repositories, shuffles them, and for each repository merges all open PRs that can be merged.
+    /// This approach helps avoid rate limiting by merging incrementally rather than batching all PRs first.
+    /// </summary>
+    ValueTask MergeForOwnerIncrementally(string owner, string message, string? username = null, DateTime? startAt = null, DateTime? endAt = null, bool checkForPassingChecks = true, int delayMs = 0, bool log = true, CancellationToken cancellationToken = default);
+
     ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log, CancellationToken cancellationToken);
 }

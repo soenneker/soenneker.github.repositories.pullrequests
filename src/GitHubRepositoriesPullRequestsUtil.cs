@@ -438,6 +438,108 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         _logger.LogInformation("Merged all PRs with passing checks for {owner}/{name}", owner, name);
     }
 
+    public async ValueTask MergeForOwnerIncrementally(string owner, string message, string? username = null, DateTime? startAt = null, DateTime? endAt = null,
+        bool checkForPassingChecks = true, int delayMs = 0, bool log = true, CancellationToken cancellationToken = default)
+    {
+        if (log)
+            _logger.LogInformation("Starting incremental merge for owner {owner}...", owner);
+
+        // Get all repositories for the owner
+        List<MinimalRepository> minimalRepositories = await _gitHubRepositoriesUtil.GetAllForOwner(owner, startAt, endAt, cancellationToken).NoSync();
+        List<Repository> repositories = ConvertToRepositories(minimalRepositories);
+
+        if (log)
+            _logger.LogInformation("Found {count} repositories for owner {owner}", repositories.Count, owner);
+
+        // Shuffle repositories to distribute load and avoid rate limiting patterns
+        var random = new Random();
+        repositories = repositories.OrderBy(_ => random.Next()).ToList();
+
+        if (log)
+            _logger.LogInformation("Repositories shuffled, processing incrementally...");
+
+        int totalMerged = 0;
+        int reposProcessed = 0;
+
+        // Iterate through each repository
+        foreach (Repository repo in repositories)
+        {
+            reposProcessed++;
+
+            try
+            {
+                if (log)
+                    _logger.LogInformation("Processing repository {repoName} ({repoNum}/{totalRepos})...", repo.Name, reposProcessed, repositories.Count);
+
+                // Get all open pull requests for this repository
+                List<PullRequest> pullRequests = await GetAll(repo, username, startAt, endAt, false, cancellationToken).NoSync();
+
+                if (pullRequests.Count == 0)
+                {
+                    if (log)
+                        _logger.LogInformation("No open PRs found for {repoName}, continuing to next repository", repo.Name);
+                    
+                    continue;
+                }
+
+                if (log)
+                    _logger.LogInformation("Found {count} open PRs for {repoName}", pullRequests.Count, repo.Name);
+
+                int mergedForRepo = 0;
+
+                // Merge each PR immediately if it can be merged
+                foreach (PullRequest pr in pullRequests)
+                {
+                    try
+                    {
+                        // Check if we should verify passing checks
+                        if (checkForPassingChecks)
+                        {
+                            bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(repo, pr, cancellationToken).NoSync();
+
+                            if (hasFailedRun)
+                            {
+                                if (log)
+                                    _logger.LogWarning("Skipping PR #{number} in {repoName} due to failed checks", pr.Number, repo.Name);
+                                
+                                continue;
+                            }
+                        }
+
+                        // Merge the PR
+                        await Merge(repo.Owner.Login, repo.Name, pr, message, cancellationToken).NoSync();
+                        mergedForRepo++;
+                        totalMerged++;
+
+                        if (log)
+                            _logger.LogInformation("Successfully merged PR #{number} in {repoName} ({merged}/{total})", pr.Number, repo.Name, mergedForRepo, pullRequests.Count);
+
+                        // Apply delay if specified to avoid rate limiting
+                        if (delayMs > 0)
+                            await DelayUtil.Delay(delayMs, _logger, cancellationToken).NoSync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to merge PR #{number} in {repoName}. Error: {error}", pr.Number, repo.Name, ex.Message);
+                        // Continue with next PR even if one fails
+                    }
+                }
+
+                if (log && mergedForRepo > 0)
+                    _logger.LogInformation("Merged {merged} PRs for {repoName}", mergedForRepo, repo.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process repository {repoName}. Error: {error}", repo.Name, ex.Message);
+                // Continue with next repository even if one fails
+            }
+        }
+
+        if (log)
+            _logger.LogInformation("Incremental merge completed for owner {owner}. Total merged: {totalMerged} PRs across {reposProcessed} repositories", 
+                owner, totalMerged, reposProcessed);
+    }
+
     public async ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log, CancellationToken cancellationToken)
     {
         try
