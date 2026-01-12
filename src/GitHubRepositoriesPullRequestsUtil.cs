@@ -39,32 +39,43 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
     private static List<Repository> ConvertToRepositories(List<MinimalRepository> minimalRepositories)
     {
-        return minimalRepositories.Select(r => new Repository
-                                  {
-                                      Name = r.Name,
-                                      FullName = r.FullName,
-                                      Owner = r.Owner,
-                                      Private = r.Private,
-                                      Description = r.Description,
-                                      Fork = r.Fork,
-                                      CreatedAt = r.CreatedAt,
-                                      UpdatedAt = r.UpdatedAt,
-                                      PushedAt = r.PushedAt,
-                                      DefaultBranch = r.DefaultBranch,
-                                      Language = r.Language,
-                                      Visibility = r.Visibility,
-                                      ForksCount = r.ForksCount,
-                                      StargazersCount = r.StargazersCount,
-                                      WatchersCount = r.WatchersCount,
-                                      OpenIssuesCount = r.OpenIssuesCount,
-                                      Topics = r.Topics,
-                                      Archived = r.Archived,
-                                      Disabled = r.Disabled,
-                                      AllowForking = r.AllowForking,
-                                      IsTemplate = r.IsTemplate,
-                                      WebCommitSignoffRequired = r.WebCommitSignoffRequired
-                                  })
-                                  .ToList();
+        if (minimalRepositories.Count == 0)
+            return [];
+
+        var list = new List<Repository>(minimalRepositories.Count);
+
+        for (var i = 0; i < minimalRepositories.Count; i++)
+        {
+            MinimalRepository r = minimalRepositories[i];
+
+            list.Add(new Repository
+            {
+                Name = r.Name,
+                FullName = r.FullName,
+                Owner = r.Owner,
+                Private = r.Private,
+                Description = r.Description,
+                Fork = r.Fork,
+                CreatedAt = r.CreatedAt,
+                UpdatedAt = r.UpdatedAt,
+                PushedAt = r.PushedAt,
+                DefaultBranch = r.DefaultBranch,
+                Language = r.Language,
+                Visibility = r.Visibility,
+                ForksCount = r.ForksCount,
+                StargazersCount = r.StargazersCount,
+                WatchersCount = r.WatchersCount,
+                OpenIssuesCount = r.OpenIssuesCount,
+                Topics = r.Topics,
+                Archived = r.Archived,
+                Disabled = r.Disabled,
+                AllowForking = r.AllowForking,
+                IsTemplate = r.IsTemplate,
+                WebCommitSignoffRequired = r.WebCommitSignoffRequired
+            });
+        }
+
+        return list;
     }
 
     public ValueTask<List<PullRequest>> GetAll(Repository repository, string? username = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
