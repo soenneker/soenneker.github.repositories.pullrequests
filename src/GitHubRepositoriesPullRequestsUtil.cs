@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.Extensions.List;
 using Soenneker.GitHub.ClientUtil.Abstract;
 using Soenneker.GitHub.OpenApiClient;
 using Soenneker.GitHub.OpenApiClient.Models;
@@ -15,7 +16,9 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Soenneker.Extensions.String;
 using Soenneker.Utils.Delay;
+
 using Repository = Soenneker.GitHub.OpenApiClient.Models.Repository;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
@@ -244,7 +247,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     public async ValueTask<List<Repository>> FilterRepositoriesWithOpenPullRequests(List<Repository> repositories, DateTimeOffset? startAt = null,
         DateTimeOffset? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
-        var result = new List<Repository>();
+        var result = new List<Repository>(repositories.Count);
         Dictionary<Repository, List<PullRequestSimple>> pullRequestsByRepo =
             await GetOpenPullRequestsSimpleForRepositories(repositories, startAt, endAt, cancellationToken)
                 .NoSync();
@@ -264,7 +267,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     public async ValueTask<List<Repository>> FilterRepositoriesWithFailedBuilds(List<Repository> repositories, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
         bool log = true, CancellationToken cancellationToken = default)
     {
-        var result = new List<Repository>();
+        var result = new List<Repository>(repositories.Count);
         Dictionary<Repository, List<PullRequestSimple>> pullRequestsByRepo =
             await GetOpenPullRequestsSimpleForRepositories(repositories, startAt, endAt, cancellationToken)
                 .NoSync();
@@ -384,7 +387,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
                                                                    .NoSync();
 
-        var result = new List<PullRequest>();
+        var result = new List<PullRequest>(simplePrs.Count);
 
         foreach (PullRequestSimple simplePr in simplePrs)
         {
@@ -484,11 +487,10 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         _logger.LogInformation("Approved all PRs for {owner}/{name}", owner, name);
     }
 
-    public async ValueTask ApproveAll(Repository repository, string message, string? username = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
+    public ValueTask ApproveAll(Repository repository, string message, string? username = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
         int delayMs = 0, CancellationToken cancellationToken = default)
     {
-        await ApproveAll(repository.Owner.Login, repository.Name, message, startAt, endAt, username, delayMs, cancellationToken)
-            .NoSync();
+        return ApproveAll(repository.Owner.Login, repository.Name, message, startAt, endAt, username, delayMs, cancellationToken);
     }
 
     public async ValueTask Merge(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default)
@@ -576,15 +578,13 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             _logger.LogInformation("Found {count} repositories for owner {owner}", repositories.Count, owner);
 
         // Shuffle repositories to distribute load and avoid rate limiting patterns
-        var random = new Random();
-        repositories = repositories.OrderBy(_ => random.Next())
-                                   .ToList();
+        repositories.Shuffle();
 
         if (log)
             _logger.LogInformation("Repositories shuffled, processing incrementally...");
 
-        int totalMerged = 0;
-        int reposProcessed = 0;
+        var totalMerged = 0;
+        var reposProcessed = 0;
 
         // Iterate through each repository
         foreach (Repository repo in repositories)
@@ -611,7 +611,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 if (log)
                     _logger.LogInformation("Found {count} open PRs for {repoName}", pullRequests.Count, repo.Name);
 
-                int mergedForRepo = 0;
+                var mergedForRepo = 0;
 
                 // Merge each PR immediately if it can be merged
                 foreach (PullRequest pr in pullRequests)
@@ -680,7 +680,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             foreach (PullRequestSimple pr in simplePrs)
             {
                 string? headSha = pr.Head?.Sha;
-                if (string.IsNullOrEmpty(headSha))
+
+                if (headSha.IsNullOrEmpty())
                     continue;
 
                 bool failed = await _gitHubRepositoriesRunsUtil.HasCommitFailure(owner, name, headSha, cancellationToken)
