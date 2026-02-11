@@ -119,6 +119,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
         var allPullRequests = new List<PullRequest>();
         var page = 1;
+        const int perPage = 100;
 
         while (true)
         {
@@ -126,6 +127,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                                                                 .Pulls.GetAsync(requestConfiguration =>
                                                                 {
                                                                     requestConfiguration.QueryParameters.Page = page;
+                                                                    requestConfiguration.QueryParameters.PerPage = perPage;
                                                                     requestConfiguration.QueryParameters.State = Soenneker.GitHub.OpenApiClient.Repos.Item.Item
                                                                         .Pulls.GetStateQueryParameterType.Open;
                                                                 }, cancellationToken)
@@ -164,6 +166,66 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         return allPullRequests;
     }
 
+    /// <summary>
+    /// Lists open PRs (simple) for a repo without fetching full PR details. Use when only PR number/head SHA is needed (e.g. failed-build check).
+    /// </summary>
+    private async ValueTask<List<PullRequestSimple>> GetOpenPullRequestsSimple(string owner, string name, DateTimeOffset? startAt, DateTimeOffset? endAt,
+        CancellationToken cancellationToken)
+    {
+        GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
+                                                                   .NoSync();
+
+        var list = new List<PullRequestSimple>();
+        var page = 1;
+        const int perPage = 100;
+
+        while (true)
+        {
+            List<PullRequestSimple>? pullRequests = await client.Repos[owner][name]
+                                                                .Pulls.GetAsync(requestConfiguration =>
+                                                                {
+                                                                    requestConfiguration.QueryParameters.Page = page;
+                                                                    requestConfiguration.QueryParameters.PerPage = perPage;
+                                                                    requestConfiguration.QueryParameters.State = Soenneker.GitHub.OpenApiClient.Repos.Item.Item
+                                                                        .Pulls.GetStateQueryParameterType.Open;
+                                                                }, cancellationToken)
+                                                                .NoSync();
+
+            if (pullRequests == null || pullRequests.Count == 0)
+                break;
+
+            foreach (PullRequestSimple pr in pullRequests)
+            {
+                if (startAt != null && pr.CreatedAt < startAt)
+                    continue;
+
+                if (endAt != null && pr.CreatedAt > endAt)
+                    continue;
+
+                list.Add(pr);
+            }
+
+            page++;
+        }
+
+        return list;
+    }
+
+    private async ValueTask<Dictionary<Repository, List<PullRequestSimple>>> GetOpenPullRequestsSimpleForRepositories(IEnumerable<Repository> repositories,
+        DateTimeOffset? startAt, DateTimeOffset? endAt, CancellationToken cancellationToken)
+    {
+        var dict = new Dictionary<Repository, List<PullRequestSimple>>();
+
+        foreach (Repository repo in repositories)
+        {
+            List<PullRequestSimple> prs = await GetOpenPullRequestsSimple(repo.Owner.Login, repo.Name, startAt, endAt, cancellationToken)
+                .NoSync();
+            dict[repo] = prs;
+        }
+
+        return dict;
+    }
+
     private async ValueTask<Dictionary<Repository, List<PullRequest>>> GetPullRequestsForRepositories(IEnumerable<Repository> repositories, string? username,
         DateTimeOffset? startAt, DateTimeOffset? endAt, CancellationToken cancellationToken)
     {
@@ -183,11 +245,11 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         DateTimeOffset? endAt = null, bool log = true, CancellationToken cancellationToken = default)
     {
         var result = new List<Repository>();
-        Dictionary<Repository, List<PullRequest>> pullRequestsByRepo =
-            await GetPullRequestsForRepositories(repositories, null, startAt, endAt, cancellationToken)
+        Dictionary<Repository, List<PullRequestSimple>> pullRequestsByRepo =
+            await GetOpenPullRequestsSimpleForRepositories(repositories, startAt, endAt, cancellationToken)
                 .NoSync();
 
-        foreach ((Repository repo, List<PullRequest> prs) in pullRequestsByRepo)
+        foreach ((Repository repo, List<PullRequestSimple> prs) in pullRequestsByRepo)
             if (prs.Count > 0)
             {
                 if (log)
@@ -199,54 +261,40 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         return result;
     }
 
-    private async ValueTask<bool> CheckForFailedBuilds(Repository repo, PullRequest pr, bool log, CancellationToken cancellationToken)
-    {
-        try
-        {
-            bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(repo, pr, cancellationToken)
-                                                                 .NoSync();
-
-            if (hasFailedRun && log)
-                _logger.LogInformation("Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build", repo.FullName, pr.Number, pr.Title);
-
-            return hasFailedRun;
-        }
-        catch (JsonException ex)
-        {
-            var rawJson = ex.Source?.ToString();
-            _logger.LogError(ex,
-                "Failed to deserialize check run data for PR #{PrNumber} in repository {RepoFullName}. " +
-                "Error: {ErrorMessage}. Path: {JsonPath}. Raw JSON: {RawJson}", pr.Number, repo.FullName, ex.Message, ex.Path, rawJson ?? "Not available");
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex,
-                "Unexpected error checking failed runs for PR #{PrNumber} in repository {RepoFullName}. " +
-                "Error: {ErrorMessage}. Exception Type: {ExceptionType}", pr.Number, repo.FullName, ex.Message, ex.GetType()
-                    .Name);
-            return false;
-        }
-    }
-
     public async ValueTask<List<Repository>> FilterRepositoriesWithFailedBuilds(List<Repository> repositories, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
         bool log = true, CancellationToken cancellationToken = default)
     {
         var result = new List<Repository>();
-        Dictionary<Repository, List<PullRequest>> pullRequestsByRepo =
-            await GetPullRequestsForRepositories(repositories, null, startAt, endAt, cancellationToken)
+        Dictionary<Repository, List<PullRequestSimple>> pullRequestsByRepo =
+            await GetOpenPullRequestsSimpleForRepositories(repositories, startAt, endAt, cancellationToken)
                 .NoSync();
 
-        foreach ((Repository repo, List<PullRequest> prs) in pullRequestsByRepo)
+        foreach ((Repository repo, List<PullRequestSimple> prs) in pullRequestsByRepo)
             try
             {
-                foreach (PullRequest pr in prs)
-                    if (await CheckForFailedBuilds(repo, pr, log, cancellationToken)
-                            .NoSync())
+                foreach (PullRequestSimple pr in prs)
+                {
+                    string? headSha = pr.Head?.Sha;
+                    if (string.IsNullOrEmpty(headSha))
+                        continue;
+
+                    bool failed = await _gitHubRepositoriesRunsUtil.HasCommitFailure(repo.Owner.Login, repo.Name, headSha, cancellationToken)
+                        .NoSync();
+
+                    if (failed)
                     {
+                        if (log)
+                            _logger.LogInformation("Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build", repo.FullName, pr.Number, pr.Title);
                         result.Add(repo);
                         break;
                     }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to deserialize check run data for repository {RepoFullName}. Error: {ErrorMessage}. Path: {JsonPath}",
+                    repo.FullName, ex.Message, ex.Path);
             }
             catch (Exception ex)
             {
@@ -330,15 +378,35 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         if (log)
             _logger.LogInformation("Getting all non-approved PRs for {owner}/{name}...", owner, name);
 
-        List<PullRequest> pullRequests = await GetAll(owner, name, username, startAt, endAt, false, cancellationToken)
+        List<PullRequestSimple> simplePrs = await GetOpenPullRequestsSimple(owner, name, startAt, endAt, cancellationToken)
             .NoSync();
+
+        GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
+                                                                   .NoSync();
 
         var result = new List<PullRequest>();
 
-        foreach (PullRequest pr in pullRequests)
-            if (!await IsApproved(owner, name, pr.Number ?? 0, cancellationToken)
-                    .NoSync())
-                result.Add(pr);
+        foreach (PullRequestSimple simplePr in simplePrs)
+        {
+            if (username != null && simplePr.User?.Login != username)
+                continue;
+
+            List<PullRequestReview>? reviews = await client.Repos[owner][name]
+                .Pulls[simplePr.Number ?? 0]
+                .Reviews.GetAsync(cancellationToken: cancellationToken)
+                .NoSync();
+
+            if (reviews?.Any(r => r.State == "APPROVED") == true)
+                continue;
+
+            PullRequest? fullPr = await client.Repos[owner][name]
+                .Pulls[simplePr.Number ?? 0]
+                .GetAsync(cancellationToken: cancellationToken)
+                .NoSync();
+
+            if (fullPr != null)
+                result.Add(fullPr);
+        }
 
         if (log)
             _logger.LogInformation("Found {count} non-approved PRs for {owner}/{name}", result.Count, owner, name);
@@ -606,15 +674,19 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     {
         try
         {
-            List<PullRequest> pullRequests = await GetAll(owner, name, cancellationToken: cancellationToken)
+            List<PullRequestSimple> simplePrs = await GetOpenPullRequestsSimple(owner, name, null, null, cancellationToken)
                 .NoSync();
 
-            foreach (PullRequest pr in pullRequests)
+            foreach (PullRequestSimple pr in simplePrs)
             {
-                bool hasFailedRun = await _gitHubRepositoriesRunsUtil.HasFailedRun(owner, name, pr, cancellationToken)
-                                                                     .NoSync();
+                string? headSha = pr.Head?.Sha;
+                if (string.IsNullOrEmpty(headSha))
+                    continue;
 
-                if (hasFailedRun)
+                bool failed = await _gitHubRepositoriesRunsUtil.HasCommitFailure(owner, name, headSha, cancellationToken)
+                    .NoSync();
+
+                if (failed)
                 {
                     if (log)
                         _logger.LogInformation("Repository has a PR #{PrNumber} ({PrTitle}) with a failed build", pr.Number, pr.Title);
@@ -625,11 +697,11 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
             return false;
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
             return false;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return false;
         }
