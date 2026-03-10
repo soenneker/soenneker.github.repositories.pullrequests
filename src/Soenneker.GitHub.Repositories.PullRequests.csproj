@@ -46,6 +46,6 @@
         <PackageReference Include="Soenneker.Extensions.List" Version="4.0.959" />
         <PackageReference Include="Soenneker.GitHub.Repositories" Version="4.0.989" />
         <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.829" />
-        <PackageReference Include="Soenneker.Utils.Delay" Version="4.0.53" />
+        <PackageReference Include="Soenneker.Utils.Delay" Version="4.0.55" />
     </ItemGroup>
 </Project>
