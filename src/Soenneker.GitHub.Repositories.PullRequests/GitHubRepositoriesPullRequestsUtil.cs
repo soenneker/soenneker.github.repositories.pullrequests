@@ -6,8 +6,6 @@ using Soenneker.Extensions.ValueTask;
 using Soenneker.GitHub.ClientUtil.Abstract;
 using Soenneker.GitHub.OpenApiClient;
 using Soenneker.GitHub.OpenApiClient.Models;
-using Soenneker.GitHub.OpenApiClient.Repos.Item.Item.Pulls.Item.Merge;
-using Soenneker.GitHub.OpenApiClient.Repos.Item.Item.Pulls.Item.Reviews;
 using Soenneker.GitHub.Repositories.Abstract;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
 using Soenneker.GitHub.Repositories.Runs.Abstract;
@@ -16,11 +14,9 @@ using Soenneker.Utils.Random;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Repository = Soenneker.GitHub.OpenApiClient.Models.Repository;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
@@ -453,10 +449,10 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
                                                                    .NoSync();
 
-        var review = new ReviewsPostRequestBody
+        var review = new PullsCreateReview
         {
             Body = message,
-            Event = ReviewsPostRequestBody_event.APPROVE
+            Event = PullsCreateReview_event.APPROVE
         };
 
         await client.Repos[owner][name]
@@ -501,9 +497,9 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
                                                                    .NoSync();
 
-        var mergeRequest = new MergePutRequestBody
+        var mergeRequest = new PullsMerge
         {
-            MergeMethod = MergePutRequestBody_merge_method.Squash,
+            MergeMethod = PullsMerge_merge_method.Squash,
             CommitMessage = message
         };
 
@@ -565,8 +561,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     }
 
     public async ValueTask MergeForOwnerIncrementally(string owner, string message, string? author = null, DateTimeOffset? startAt = null,
-        DateTimeOffset? endAt = null, bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, 
-        bool log = true, CancellationToken cancellationToken = default)
+        DateTimeOffset? endAt = null, bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, bool log = true,
+        CancellationToken cancellationToken = default)
     {
         if (log)
             _logger.LogInformation("Starting incremental merge for owner ({owner}) and PR author ({author})...", owner, author);
@@ -713,8 +709,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         if (log)
             _logger.LogInformation(
                 "Incremental merge completed for owner {owner}. Total merged: {totalMerged}. Repos processed: {reposProcessed}. PRs considered: {prsConsidered}. " +
-                "Skipped not-mergeable: {skippedNotMergeable}. Skipped failed-checks: {skippedFailedChecks}. Errors: {errors}",
-                owner, totalMerged, reposProcessed, prsConsidered, skippedNotMergeable, skippedFailedChecks, errors);
+                "Skipped not-mergeable: {skippedNotMergeable}. Skipped failed-checks: {skippedFailedChecks}. Errors: {errors}", owner, totalMerged,
+                reposProcessed, prsConsidered, skippedNotMergeable, skippedFailedChecks, errors);
     }
 
     public async ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log, CancellationToken cancellationToken)

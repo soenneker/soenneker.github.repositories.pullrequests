@@ -1,12 +1,12 @@
-<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+<?xml version="1.0" encoding="utf-8"?>
 
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <Platforms>AnyCPU</Platforms>
         <NoWarn>$(NoWarn);1591</NoWarn>
     </PropertyGroup>
-
     <PropertyGroup>
         <Description>A utility library for GitHub repository pull request related operations</Description>
         <Version Condition="'$(BUILD_VERSION)' == ''">4.0.0</Version>
@@ -14,7 +14,7 @@
         <AssemblyName>Soenneker.GitHub.Repositories.PullRequests</AssemblyName>
         <PackageId>Soenneker.GitHub.Repositories.PullRequests</PackageId>
         <PackageTags>github repositories pullrequests repository repo utilities util pull requests githubrepositoriespullrequestsutil csharp dotnet c# .net</PackageTags>
-        <Copyright>Copyright © 2024-2026 Jake Soenneker</Copyright>
+        <Copyright>Copyright c 2024-2026 Jake Soenneker</Copyright>
         <Authors>Jake Soenneker</Authors>
         <Company>https://soenneker.com</Company>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -32,10 +32,11 @@
         <LangVersion>latest</LangVersion>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageIcon>icon.png</PackageIcon>
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+        <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
         <PackageReleaseNotes Condition="'$(PACKAGE_RELEASE_NOTES)' != ''">
             $(PACKAGE_RELEASE_NOTES)
-        </PackageReleaseNotes></PropertyGroup>
+        </PackageReleaseNotes>
+    </PropertyGroup>
 
     <ItemGroup>
         <None Include="..\..\README.md" Pack="true" PackagePath="\" />
@@ -47,8 +48,8 @@
         <PackageReference Include="Soenneker.Extensions.DateTime" Version="4.0.1748" />
         <PackageReference Include="Soenneker.Extensions.DateTimeOffset" Version="4.0.466" />
         <PackageReference Include="Soenneker.Extensions.List" Version="4.0.966" />
-        <PackageReference Include="Soenneker.GitHub.Repositories" Version="4.0.1041" />
-        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.873" />
+        <PackageReference Include="Soenneker.GitHub.Repositories" Version="4.0.1044" />
+        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.875" />
         <PackageReference Include="Soenneker.Utils.Delay" Version="4.0.62" />
     </ItemGroup>
 </Project>
