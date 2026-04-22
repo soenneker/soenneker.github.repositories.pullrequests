@@ -1,28 +1,27 @@
-using Soenneker.Facts.Local;
+using Soenneker.Tests.Attributes.Local;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
-using Soenneker.Tests.FixturedUnit;
+using Soenneker.Tests.HostedUnit;
 using System.Threading.Tasks;
-using Xunit;
 
 namespace Soenneker.GitHub.Repositories.PullRequests.Tests;
 
-[Collection("Collection")]
-public class GitHubRepositoriesPullRequestsUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public class GitHubRepositoriesPullRequestsUtilTests : HostedUnitTest
 {
     private readonly IGitHubRepositoriesPullRequestsUtil _util;
 
-    public GitHubRepositoriesPullRequestsUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public GitHubRepositoriesPullRequestsUtilTests(Host host) : base(host)
     {
         _util = Resolve<IGitHubRepositoriesPullRequestsUtil>(true);
     }
 
-    [Fact]
+    [Test]
     public void Default()
     {
 
     }
 
-    [LocalFact]
+    [LocalOnly]
     public async ValueTask HasFailedRunOnOpenPullRequests()
     { 
         bool result = await _util.HasFailedRunOnOpenPullRequests("", "", true, CancellationToken);
