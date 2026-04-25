@@ -1,3 +1,4 @@
+using System.Threading;
 using Soenneker.Tests.Attributes.Local;
 using Soenneker.GitHub.Repositories.PullRequests.Abstract;
 using Soenneker.Tests.HostedUnit;
@@ -22,8 +23,8 @@ public class GitHubRepositoriesPullRequestsUtilTests : HostedUnitTest
     }
 
     [LocalOnly]
-    public async ValueTask HasFailedRunOnOpenPullRequests()
+    public async ValueTask HasFailedRunOnOpenPullRequests(CancellationToken cancellationToken)
     { 
-        bool result = await _util.HasFailedRunOnOpenPullRequests("", "", true, CancellationToken);
+        bool result = await _util.HasFailedRunOnOpenPullRequests("", "", true, cancellationToken);
     }
 }
