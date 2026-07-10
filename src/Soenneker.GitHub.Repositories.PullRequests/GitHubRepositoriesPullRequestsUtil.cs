@@ -128,8 +128,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                                                                 {
                                                                     requestConfiguration.QueryParameters.Page = page;
                                                                     requestConfiguration.QueryParameters.PerPage = perPage;
-                                                                    requestConfiguration.QueryParameters.State = Soenneker.GitHub.OpenApiClient.Repos.Item.Item
-                                                                        .Pulls.GetStateQueryParameterType.Open;
+                                                                    requestConfiguration.QueryParameters.State = PullsListStateParameter.Open;
                                                                 }, cancellationToken)
                                                                 .NoSync();
 
@@ -149,7 +148,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                 // Get full pull request details
                 PullRequest? fullPr = await client.Repos[owner][name]
-                                                  .Pulls[pr.Number ?? 0]
+                                                  .Pulls[(pr.Number ?? 0).ToString()]
                                                   .GetAsync(cancellationToken: cancellationToken)
                                                   .NoSync();
 
@@ -186,8 +185,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                                                                 {
                                                                     requestConfiguration.QueryParameters.Page = page;
                                                                     requestConfiguration.QueryParameters.PerPage = perPage;
-                                                                    requestConfiguration.QueryParameters.State = Soenneker.GitHub.OpenApiClient.Repos.Item.Item
-                                                                        .Pulls.GetStateQueryParameterType.Open;
+                                                                    requestConfiguration.QueryParameters.State = PullsListStateParameter.Open;
                                                                 }, cancellationToken)
                                                                 .NoSync();
 
@@ -365,7 +363,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                                                                    .NoSync();
 
         List<PullRequestReview>? reviews = await client.Repos[owner][repo]
-                                                       .Pulls[pullRequestNumber]
+                                                       .Pulls[pullRequestNumber.ToString()]
                                                        .Reviews.GetAsync(cancellationToken: cancellationToken)
                                                        .NoSync();
 
@@ -392,7 +390,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 continue;
 
             List<PullRequestReview>? reviews = await client.Repos[owner][name]
-                                                           .Pulls[simplePr.Number ?? 0]
+                                                           .Pulls[(simplePr.Number ?? 0).ToString()]
                                                            .Reviews.GetAsync(cancellationToken: cancellationToken)
                                                            .NoSync();
 
@@ -400,7 +398,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 continue;
 
             PullRequest? fullPr = await client.Repos[owner][name]
-                                              .Pulls[simplePr.Number ?? 0]
+                                              .Pulls[(simplePr.Number ?? 0).ToString()]
                                               .GetAsync(cancellationToken: cancellationToken)
                                               .NoSync();
 
@@ -449,14 +447,14 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
                                                                    .NoSync();
 
-        var review = new PullsCreateReview
+        var review = new PullsCreateReviewRequest
         {
             Body = message,
-            Event = PullsCreateReview_event.APPROVE
+            Event = PullsCreateReviewRequestEvent.Approve
         };
 
         await client.Repos[owner][name]
-                    .Pulls[pullRequest.Number ?? 0]
+                    .Pulls[(pullRequest.Number ?? 0).ToString()]
                     .Reviews.PostAsync(review, cancellationToken: cancellationToken)
                     .NoSync();
 
@@ -497,14 +495,14 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken)
                                                                    .NoSync();
 
-        var mergeRequest = new PullsMerge
+        var mergeRequest = new PullsMergeRequest
         {
-            MergeMethod = PullsMerge_merge_method.Squash,
+            MergeMethod = PullsMergeRequestMergeMethod.Squash,
             CommitMessage = message
         };
 
         await client.Repos[owner][name]
-                    .Pulls[pullRequest.Number ?? 0]
+                    .Pulls[(pullRequest.Number ?? 0).ToString()]
                     .Merge.PutAsync(mergeRequest, cancellationToken: cancellationToken)
                     .NoSync();
 
