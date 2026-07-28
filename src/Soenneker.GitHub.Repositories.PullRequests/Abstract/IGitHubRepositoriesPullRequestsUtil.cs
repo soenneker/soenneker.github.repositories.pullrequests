@@ -111,8 +111,9 @@ public interface IGitHubRepositoriesPullRequestsUtil
 
     /// <summary>
     /// Incrementally merges all pull requests for an owner across all their repositories.
-    /// Gets all repositories, shuffles them, and for each repository merges all open PRs that can be merged.
-    /// This approach helps avoid rate limiting by merging incrementally rather than batching all PRs first.
+    /// Gets all repositories, shuffles them, and merges at most one pull request from each repository per queue pass.
+    /// Repositories with remaining pull requests move to the back of the queue so their pull requests are refreshed
+    /// after GitHub recalculates mergeability.
     /// </summary>
     ValueTask MergeForOwnerIncrementally(string owner, string message, string? author = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
         bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, bool log = true,
