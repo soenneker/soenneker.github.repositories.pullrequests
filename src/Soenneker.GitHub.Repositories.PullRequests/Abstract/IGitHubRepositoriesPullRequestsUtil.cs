@@ -69,6 +69,13 @@ public interface IGitHubRepositoriesPullRequestsUtil
     ValueTask Approve(string owner, string name, PullRequest pullRequest, string message, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Rebases every open pull request whose head branch is behind its base branch onto the latest base branch.
+    /// </summary>
+    /// <returns>The number of pull request branches that were rebased.</returns>
+    ValueTask<int> RebaseAllBehind(string owner, string name, string? username = null, DateTimeOffset? startAt = null,
+        DateTimeOffset? endAt = null, int delayMs = 0, bool log = true, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Filters a list of repositories to only those with open pull requests.
     /// </summary>
     ValueTask<List<Repository>> FilterRepositoriesWithOpenPullRequests(List<Repository> repositories, DateTimeOffset? startAt = null,

@@ -3,6 +3,7 @@ using Soenneker.Extensions.List;
 using Soenneker.Extensions.String;
 using Soenneker.Extensions.Task;
 using Soenneker.Extensions.ValueTask;
+using Soenneker.GitHub.Client.Http.Abstract;
 using Soenneker.GitHub.ClientUtil.Abstract;
 using Soenneker.GitHub.OpenApiClient;
 using Soenneker.GitHub.OpenApiClient.Models;
@@ -14,6 +15,8 @@ using Soenneker.Utils.Random;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,15 +27,17 @@ namespace Soenneker.GitHub.Repositories.PullRequests;
 public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequestsUtil
 {
     private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
+    private readonly IGitHubHttpClient _gitHubHttpClient;
     private readonly IGitHubOpenApiClientUtil _gitHubOpenApiClientUtil;
     private readonly IGitHubRepositoriesUtil _gitHubRepositoriesUtil;
     private readonly IGitHubRepositoriesRunsUtil _gitHubRepositoriesRunsUtil;
 
     public GitHubRepositoriesPullRequestsUtil(ILogger<GitHubRepositoriesPullRequestsUtil> logger,
-        IGitHubOpenApiClientUtil gitHubOpenApiClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil,
+        IGitHubHttpClient gitHubHttpClient, IGitHubOpenApiClientUtil gitHubOpenApiClientUtil, IGitHubRepositoriesUtil gitHubRepositoriesUtil,
         IGitHubRepositoriesRunsUtil gitHubRepositoriesRunsUtil)
     {
         _logger = logger;
+        _gitHubHttpClient = gitHubHttpClient;
         _gitHubOpenApiClientUtil = gitHubOpenApiClientUtil;
         _gitHubRepositoriesUtil = gitHubRepositoriesUtil;
         _gitHubRepositoriesRunsUtil = gitHubRepositoriesRunsUtil;
@@ -492,6 +497,86 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     {
         return ApproveAll(repository.Owner.Login, repository.Name, message, startAt, endAt, username, delayMs,
             cancellationToken);
+    }
+
+    public async ValueTask<int> RebaseAllBehind(string owner, string name, string? username = null,
+        DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, int delayMs = 0, bool log = true,
+        CancellationToken cancellationToken = default)
+    {
+        if (log)
+            _logger.LogInformation("Rebasing open PR branches that are behind for {owner}/{name}...", owner, name);
+
+        List<PullRequestSimple> pullRequests =
+            await GetOpenPullRequestsSimple(owner, name, startAt, endAt, cancellationToken).NoSync();
+        GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken).NoSync();
+        var rebased = 0;
+
+        foreach (PullRequestSimple pullRequest in pullRequests)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (username != null && !string.Equals(pullRequest.User?.Login, username, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            int? number = pullRequest.Number;
+            string? nodeId = pullRequest.NodeId;
+            string? baseSha = pullRequest.Base?.Sha;
+            string? headSha = pullRequest.Head?.Sha;
+
+            if (number == null || nodeId.IsNullOrEmpty() || baseSha.IsNullOrEmpty() || headSha.IsNullOrEmpty())
+            {
+                if (log)
+                    _logger.LogWarning("Skipping PR #{number} because its number, node ID, base SHA, or head SHA is unavailable", number);
+
+                continue;
+            }
+
+            CommitComparison? comparison = await client.Repos[owner][name].Compare[$"{baseSha}...{headSha}"]
+                                                       .GetAsync(cancellationToken: cancellationToken).NoSync();
+
+            if (comparison?.BehindBy is not > 0)
+                continue;
+
+            if (log)
+                _logger.LogInformation("Rebasing PR #{number}, which is {behindBy} commits behind its base branch...", number,
+                    comparison.BehindBy);
+
+            var payload = new
+            {
+                query =
+                    "mutation($pullRequestId:ID!,$expectedHeadOid:GitObjectID!){updatePullRequestBranch(input:{pullRequestId:$pullRequestId,expectedHeadOid:$expectedHeadOid,updateMethod:REBASE}){pullRequest{id}}}",
+                variables = new
+                {
+                    pullRequestId = nodeId,
+                    expectedHeadOid = baseSha
+                }
+            };
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "graphql")
+            {
+                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            };
+
+            HttpClient httpClient = await _gitHubHttpClient.Get(cancellationToken).NoSync();
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken).NoSync();
+            response.EnsureSuccessStatusCode();
+
+            string json = await response.Content.ReadAsStringAsync(cancellationToken).NoSync();
+            using JsonDocument document = JsonDocument.Parse(json);
+
+            if (document.RootElement.TryGetProperty("errors", out JsonElement errors) && errors.GetArrayLength() > 0)
+                throw new InvalidOperationException($"GitHub could not rebase PR #{number}: {errors}");
+
+            rebased++;
+
+            if (delayMs > 0)
+                await DelayUtil.Delay(delayMs, _logger, cancellationToken).NoSync();
+        }
+
+        if (log)
+            _logger.LogInformation("Rebased {count} open PR branches that were behind for {owner}/{name}", rebased, owner, name);
+
+        return rebased;
     }
 
     public async ValueTask Merge(string owner, string name, PullRequest pullRequest, string message,
