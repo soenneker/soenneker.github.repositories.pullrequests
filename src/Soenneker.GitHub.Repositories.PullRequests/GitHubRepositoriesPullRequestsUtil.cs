@@ -14,8 +14,10 @@ using Soenneker.Utils.Delay;
 using Soenneker.Utils.Random;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -554,15 +556,15 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "graphql")
             {
-                Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                Content = JsonContent.Create(payload)
             };
 
             HttpClient httpClient = await _gitHubHttpClient.Get(cancellationToken).NoSync();
             using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken).NoSync();
             response.EnsureSuccessStatusCode();
 
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).NoSync();
-            using JsonDocument document = JsonDocument.Parse(json);
+            await using Stream json = await response.Content.ReadAsStreamAsync(cancellationToken).NoSync();
+            using JsonDocument document = await JsonDocument.ParseAsync(json, cancellationToken: cancellationToken).NoSync();
 
             if (document.RootElement.TryGetProperty("errors", out JsonElement errors) && errors.GetArrayLength() > 0)
                 throw new InvalidOperationException($"GitHub could not rebase PR #{number}: {errors}");
