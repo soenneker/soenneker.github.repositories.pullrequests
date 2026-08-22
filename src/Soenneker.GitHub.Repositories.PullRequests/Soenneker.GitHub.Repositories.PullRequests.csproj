@@ -46,7 +46,7 @@
     <ItemGroup>
         <PackageReference Include="Soenneker.Extensions.DateTime" Version="4.0.1774" />
         <PackageReference Include="Soenneker.Extensions.List" Version="4.0.982" />
-        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.1013" />
+        <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.1014" />
         <PackageReference Include="Soenneker.Utils.Delay" Version="4.0.78" />
     </ItemGroup>
 </Project>
