@@ -7,7 +7,7 @@ using Soenneker.GitHub.OpenApiClient.Models;
 namespace Soenneker.GitHub.Repositories.PullRequests.Abstract;
 
 /// <summary>
-/// Utility for interacting with GitHub pull requests in repositories
+/// Retrieves, reviews, rebases, and merges GitHub pull requests across repositories.
 /// </summary>
 public interface IGitHubRepositoriesPullRequestsUtil
 {

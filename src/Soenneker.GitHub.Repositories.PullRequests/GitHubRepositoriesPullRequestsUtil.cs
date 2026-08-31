@@ -25,7 +25,6 @@ using System.Threading.Tasks;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
-///<inheritdoc cref="IGitHubRepositoriesPullRequestsUtil"/>
 public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequestsUtil
 {
     private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
@@ -154,8 +153,11 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 if (endAt != null && pr.CreatedAt > endAt)
                     continue;
 
+                if (pr.Number is not int pullRequestNumber)
+                    continue;
+
                 // Get full pull request details
-                PullRequest? fullPr = await client.Repos[owner][name].Pulls[(pr.Number ?? 0).ToString()]
+                PullRequest? fullPr = await client.Repos[owner][name].Pulls[pullRequestNumber.ToString()]
                                                   .GetAsync(cancellationToken: cancellationToken).NoSync();
 
                 if (fullPr != null)
@@ -550,7 +552,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 variables = new
                 {
                     pullRequestId = nodeId,
-                    expectedHeadOid = baseSha
+                    expectedHeadOid = headSha
                 }
             };
 
@@ -821,40 +823,29 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     public async ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            List<PullRequestSimple> simplePrs =
-                await GetOpenPullRequestsSimple(owner, name, null, null, cancellationToken).NoSync();
+        List<PullRequestSimple> simplePrs =
+            await GetOpenPullRequestsSimple(owner, name, null, null, cancellationToken).NoSync();
 
-            foreach (PullRequestSimple pr in simplePrs)
+        foreach (PullRequestSimple pr in simplePrs)
+        {
+            string? headSha = pr.Head?.Sha;
+
+            if (headSha.IsNullOrEmpty())
+                continue;
+
+            bool failed = await _gitHubRepositoriesRunsUtil
+                .HasCommitFailure(owner, name, headSha, cancellationToken).NoSync();
+
+            if (failed)
             {
-                string? headSha = pr.Head?.Sha;
+                if (log)
+                    _logger.LogInformation("Repository has a PR #{PrNumber} ({PrTitle}) with a failed build",
+                        pr.Number, pr.Title);
 
-                if (headSha.IsNullOrEmpty())
-                    continue;
-
-                bool failed = await _gitHubRepositoriesRunsUtil
-                                    .HasCommitFailure(owner, name, headSha, cancellationToken).NoSync();
-
-                if (failed)
-                {
-                    if (log)
-                        _logger.LogInformation("Repository has a PR #{PrNumber} ({PrTitle}) with a failed build",
-                            pr.Number, pr.Title);
-
-                    return true;
-                }
+                return true;
             }
+        }
 
-            return false;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
+        return false;
     }
 }

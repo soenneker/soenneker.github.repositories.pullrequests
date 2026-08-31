@@ -7,7 +7,7 @@ using Soenneker.GitHub.Repositories.Runs.Registrars;
 namespace Soenneker.GitHub.Repositories.PullRequests.Registrars;
 
 /// <summary>
-/// A utility library for GitHub repository pull request related operations
+/// Registers services for retrieving, reviewing, rebasing, and merging GitHub pull requests.
 /// </summary>
 public static class GitHubRepositoriesPullRequestsUtilRegistrar
 {
