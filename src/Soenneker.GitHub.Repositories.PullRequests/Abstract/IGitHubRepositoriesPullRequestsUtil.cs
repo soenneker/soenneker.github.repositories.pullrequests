@@ -127,6 +127,16 @@ public interface IGitHubRepositoriesPullRequestsUtil
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Incrementally merges all pull requests for an owner across all their repositories using bounded parallelism.
+    /// Gets all repositories, shuffles them, and merges at most one pull request from each repository per queue pass.
+    /// Repositories with remaining pull requests move to the back of the queue so their pull requests are refreshed
+    /// after GitHub recalculates mergeability.
+    /// </summary>
+    ValueTask MergeForOwnerIncrementally(string owner, string message, int maxDegreeOfParallelism, string? author = null,
+        DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0,
+        int maxDelayMs = 0, bool log = true, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Determines whether there is a failed workflow run on any open pull requests for the specified repository.
     /// </summary>
     /// <param name="owner">The account owner of the repository. Cannot be null or empty.</param>

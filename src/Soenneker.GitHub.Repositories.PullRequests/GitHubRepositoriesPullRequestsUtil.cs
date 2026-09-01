@@ -650,14 +650,26 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         _logger.LogInformation("Merged all PRs with passing checks for {owner}/{name}", owner, name);
     }
 
-    public async ValueTask MergeForOwnerIncrementally(string owner, string message, string? author = null,
+    public ValueTask MergeForOwnerIncrementally(string owner, string message, string? author = null,
         DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool checkForPassingChecks = true,
         int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, bool log = true,
         CancellationToken cancellationToken = default)
     {
+        return MergeForOwnerIncrementally(owner, message, 1, author, startAt, endAt, checkForPassingChecks, delayMs,
+            minDelayMs, maxDelayMs, log, cancellationToken);
+    }
+
+    public async ValueTask MergeForOwnerIncrementally(string owner, string message, int maxDegreeOfParallelism,
+        string? author = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
+        bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, bool log = true,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxDegreeOfParallelism, 1);
+
         if (log)
-            _logger.LogInformation("Starting incremental merge for owner ({owner}) and PR author ({author})...", owner,
-                author);
+            _logger.LogInformation(
+                "Starting incremental merge for owner ({owner}) and PR author ({author}) with up to {maxDegreeOfParallelism} repository passes in parallel...",
+                owner, author, maxDegreeOfParallelism);
 
         // Get all repositories for the owner/org
         List<MinimalRepository> minimalRepositories =
@@ -689,16 +701,17 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         var skippedFailedChecks = 0;
         var errors = 0;
 
-        while (repositoryQueue.TryDequeue(out Repository? repo))
+        async Task<IncrementalMergeResult> ProcessRepository(Repository repo, int repositoryPass)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            reposProcessed++;
+
+            var result = new IncrementalMergeResult(repo);
 
             try
             {
                 if (log)
                     _logger.LogInformation("Processing repository {repoName} (queue pass {repoPass})...", repo.Name,
-                        reposProcessed);
+                        repositoryPass);
 
                 List<PullRequest> pullRequests = await GetAll(repo.Owner.Login, repo.Name, username: author,
                     startAt: startAt, endAt: endAt, log: false, cancellationToken: cancellationToken).NoSync();
@@ -710,7 +723,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 {
                     if (log)
                         _logger.LogInformation("No open PRs found for {repoName}, continuing...", repo.Name);
-                    continue;
+                    return result;
                 }
 
                 if (log)
@@ -722,12 +735,12 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 foreach (PullRequest pr in pullRequests)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    prsConsidered++;
+                    result.PullRequestsConsidered++;
 
                     // Mergeable gate (matches your test: only Mergeable == true)
                     if (pr.Mergeable != true)
                     {
-                        skippedNotMergeable++;
+                        result.SkippedNotMergeable++;
 
                         if (log)
                             _logger.LogWarning("--- Pull request ({name}) {prNumber} is not mergeable",
@@ -746,7 +759,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                             if (hasFailedRun)
                             {
-                                skippedFailedChecks++;
+                                result.SkippedFailedChecks++;
 
                                 if (log)
                                     _logger.LogWarning("Skipping PR #{number} in {repoName} due to failed checks",
@@ -767,8 +780,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                         await Merge(mergeOwner, mergeRepo, pr, message, cancellationToken).NoSync();
 
                         mergedForRepo++;
-                        totalMerged++;
-                        mergedPullRequests.Add((mergeOwner, mergeRepo, pr.Number!.Value));
+                        result.MergedPullRequest = (mergeOwner, mergeRepo, pr.Number!.Value);
 
                         if (log)
                             _logger.LogInformation("Merged PR #{number} in {repoName} ({mergedForRepo}/{repoTotal})",
@@ -791,13 +803,13 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                         // Merge at most one PR from a repository per pass. On the next pass, refetch
                         // the remaining PRs so GitHub has a chance to recalculate their mergeability.
                         if (pullRequests.Count > 1)
-                            repositoryQueue.Enqueue(repo);
+                            result.Requeue = true;
 
                         break;
                     }
                     catch (Exception ex)
                     {
-                        errors++;
+                        result.Errors++;
                         _logger.LogError(ex, "Failed to merge PR #{number} in {repoName}. Error: {error}", pr.Number,
                             repo.Name, ex.Message);
                     }
@@ -808,8 +820,44 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             }
             catch (Exception ex)
             {
-                errors++;
+                result.Errors++;
                 _logger.LogError(ex, "Failed to process repository {repoName}. Error: {error}", repo.Name, ex.Message);
+            }
+
+            return result;
+        }
+
+        while (repositoryQueue.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            int batchSize = Math.Min(maxDegreeOfParallelism, repositoryQueue.Count);
+            var tasks = new List<Task<IncrementalMergeResult>>(batchSize);
+
+            for (var i = 0; i < batchSize; i++)
+            {
+                Repository repo = repositoryQueue.Dequeue();
+                reposProcessed++;
+                tasks.Add(ProcessRepository(repo, reposProcessed));
+            }
+
+            IncrementalMergeResult[] results = await Task.WhenAll(tasks).NoSync();
+
+            foreach (IncrementalMergeResult result in results)
+            {
+                prsConsidered += result.PullRequestsConsidered;
+                skippedNotMergeable += result.SkippedNotMergeable;
+                skippedFailedChecks += result.SkippedFailedChecks;
+                errors += result.Errors;
+
+                if (result.MergedPullRequest is { } mergedPullRequest)
+                {
+                    totalMerged++;
+                    mergedPullRequests.Add(mergedPullRequest);
+                }
+
+                if (result.Requeue)
+                    repositoryQueue.Enqueue(result.Repository);
             }
         }
 
@@ -818,6 +866,17 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 "Incremental merge completed for owner {owner}. Total merged: {totalMerged}. Repository passes: {reposProcessed}. PRs considered: {prsConsidered}. " +
                 "Skipped not-mergeable: {skippedNotMergeable}. Skipped failed-checks: {skippedFailedChecks}. Errors: {errors}",
                 owner, totalMerged, reposProcessed, prsConsidered, skippedNotMergeable, skippedFailedChecks, errors);
+    }
+
+    private sealed class IncrementalMergeResult(Repository repository)
+    {
+        public Repository Repository { get; } = repository;
+        public (string Owner, string Repository, int Number)? MergedPullRequest { get; set; }
+        public bool Requeue { get; set; }
+        public int PullRequestsConsidered { get; set; }
+        public int SkippedNotMergeable { get; set; }
+        public int SkippedFailedChecks { get; set; }
+        public int Errors { get; set; }
     }
 
     public async ValueTask<bool> HasFailedRunOnOpenPullRequests(string owner, string name, bool log,
