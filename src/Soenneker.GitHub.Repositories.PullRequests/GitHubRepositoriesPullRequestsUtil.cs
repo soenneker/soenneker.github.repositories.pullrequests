@@ -319,14 +319,23 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         return result;
     }
 
-    public async ValueTask<List<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner,
+    public ValueTask<List<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner,
         DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool log = true,
         CancellationToken cancellationToken = default)
     {
+        return GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(owner, 1, startAt, endAt, log, cancellationToken);
+    }
+
+    public async ValueTask<List<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner,
+        int maxDegreeOfParallelism, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool log = true,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxDegreeOfParallelism, 1);
+
         if (log)
             _logger.LogInformation(
-                "Getting all repositories with failed builds on open PRs for owner {Owner} (Start: {StartAt}, End: {EndAt})...",
-                owner, startAt, endAt);
+                "Getting all repositories with failed builds on open PRs for owner {Owner} with up to {MaxDegreeOfParallelism} repositories in parallel (Start: {StartAt}, End: {EndAt})...",
+                owner, maxDegreeOfParallelism, startAt, endAt);
 
         try
         {
@@ -338,8 +347,10 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             if (log)
                 _logger.LogInformation("Fetched {Count} repositories for {Owner}", repositories.Count, owner);
 
-            List<Repository> result =
-                await FilterRepositoriesWithFailedBuilds(repositories, startAt, endAt, log, cancellationToken).NoSync();
+            List<Repository> result = maxDegreeOfParallelism == 1
+                ? await FilterRepositoriesWithFailedBuilds(repositories, startAt, endAt, log, cancellationToken).NoSync()
+                : await FilterRepositoriesWithFailedBuildsInParallel(repositories, maxDegreeOfParallelism, startAt,
+                    endAt, log, cancellationToken).NoSync();
 
             if (log)
                 _logger.LogInformation("Found {Count} repositories with failed builds on open PRs for owner {Owner}",
@@ -354,6 +365,86 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 ex.Message);
             throw;
         }
+    }
+
+    private async ValueTask<List<Repository>> FilterRepositoriesWithFailedBuildsInParallel(
+        List<Repository> repositories, int maxDegreeOfParallelism, DateTimeOffset? startAt, DateTimeOffset? endAt,
+        bool log, CancellationToken cancellationToken)
+    {
+        var result = new List<Repository>(repositories.Count);
+
+        async Task<Repository?> ProcessRepository(Repository repo)
+        {
+            try
+            {
+                List<PullRequestSimple> pullRequests = await GetOpenPullRequestsSimple(repo.Owner.Login, repo.Name,
+                    startAt, endAt, cancellationToken).NoSync();
+
+                foreach (PullRequestSimple pullRequest in pullRequests)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    string? headSha = pullRequest.Head?.Sha;
+                    if (string.IsNullOrEmpty(headSha))
+                        continue;
+
+                    bool failed = await _gitHubRepositoriesRunsUtil
+                                        .HasCommitFailure(repo.Owner.Login, repo.Name, headSha, cancellationToken)
+                                        .NoSync();
+
+                    if (!failed)
+                        continue;
+
+                    if (log)
+                        _logger.LogInformation(
+                            "Repository {RepoFullName} has a PR #{PrNumber} ({PrTitle}) with a failed build",
+                            repo.FullName, pullRequest.Number, pullRequest.Title);
+
+                    return repo;
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to deserialize check run data for repository {RepoFullName}. Error: {ErrorMessage}. Path: {JsonPath}",
+                    repo.FullName, ex.Message, ex.Path);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to process repository {RepoFullName}. Error: {ErrorMessage}. Exception Type: {ExceptionType}",
+                    repo.FullName, ex.Message, ex.GetType().Name);
+            }
+
+            return null;
+        }
+
+        for (var startIndex = 0; startIndex < repositories.Count; startIndex += maxDegreeOfParallelism)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            int batchSize = Math.Min(maxDegreeOfParallelism, repositories.Count - startIndex);
+            var tasks = new List<Task<Repository?>>(batchSize);
+
+            for (var offset = 0; offset < batchSize; offset++)
+                tasks.Add(ProcessRepository(repositories[startIndex + offset]));
+
+            Repository?[] batchResults = await Task.WhenAll(tasks).NoSync();
+
+            foreach (Repository? repository in batchResults)
+                if (repository != null)
+                    result.Add(repository);
+        }
+
+        if (log)
+            _logger.LogInformation("Found {Count} repositories with failed builds out of {TotalRepos} repositories",
+                result.Count, repositories.Count);
+
+        return result;
     }
 
     public async ValueTask<List<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner,

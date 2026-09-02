@@ -94,6 +94,12 @@ public interface IGitHubRepositoriesPullRequestsUtil
         bool log = true, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets all repositories for a given owner with at least one open pull request that has a failed build, using bounded parallelism.
+    /// </summary>
+    ValueTask<List<Repository>> GetAllRepositoriesWithFailedBuildsOnOpenPullRequests(string owner, int maxDegreeOfParallelism,
+        DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool log = true, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all repositories for a given owner with at least one open pull request.
     /// </summary>
     ValueTask<List<Repository>> GetAllRepositoriesWithOpenPullRequests(string owner, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
