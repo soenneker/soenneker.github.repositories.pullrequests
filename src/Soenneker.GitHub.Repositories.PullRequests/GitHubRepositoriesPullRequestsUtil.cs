@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 
 namespace Soenneker.GitHub.Repositories.PullRequests;
 
+/// <inheritdoc cref="IGitHubRepositoriesPullRequestsUtil" />
 public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPullRequestsUtil
 {
     private readonly ILogger<GitHubRepositoriesPullRequestsUtil> _logger;
