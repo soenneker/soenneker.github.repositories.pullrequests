@@ -126,7 +126,8 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Incrementally merges all pull requests for an owner across all their repositories.
     /// Gets all repositories, shuffles them, and merges at most one pull request from each repository per queue pass.
     /// Repositories with remaining pull requests move to the back of the queue so their pull requests are refreshed
-    /// after GitHub recalculates mergeability.
+    /// after GitHub recalculates mergeability. Unknown mergeability is refreshed up to three times,
+    /// after delays of 1, 2, and 4 seconds, before the pull request is skipped as unresolved.
     /// </summary>
     ValueTask MergeForOwnerIncrementally(string owner, string message, string? author = null, DateTimeOffset? startAt = null, DateTimeOffset? endAt = null,
         bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0, int maxDelayMs = 0, bool log = true,
@@ -136,7 +137,8 @@ public interface IGitHubRepositoriesPullRequestsUtil
     /// Incrementally merges all pull requests for an owner across all their repositories using bounded parallelism.
     /// Gets all repositories, shuffles them, and merges at most one pull request from each repository per queue pass.
     /// Repositories with remaining pull requests move to the back of the queue so their pull requests are refreshed
-    /// after GitHub recalculates mergeability.
+    /// after GitHub recalculates mergeability. Unknown mergeability is refreshed up to three times,
+    /// after delays of 1, 2, and 4 seconds, before the pull request is skipped as unresolved.
     /// </summary>
     ValueTask MergeForOwnerIncrementally(string owner, string message, int maxDegreeOfParallelism, string? author = null,
         DateTimeOffset? startAt = null, DateTimeOffset? endAt = null, bool checkForPassingChecks = true, int delayMs = 0, int minDelayMs = 0,

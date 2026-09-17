@@ -790,6 +790,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         var reposProcessed = 0;
         var prsConsidered = 0;
         var skippedNotMergeable = 0;
+        var skippedUnknownMergeability = 0;
         var skippedFailedChecks = 0;
         var errors = 0;
 
@@ -824,25 +825,48 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                 var mergedForRepo = 0;
 
-                foreach (PullRequest pr in pullRequests)
+                foreach (PullRequest candidate in pullRequests)
                 {
+                    PullRequest pr = candidate;
                     cancellationToken.ThrowIfCancellationRequested();
                     result.PullRequestsConsidered++;
 
-                    // Mergeable gate (matches your test: only Mergeable == true)
-                    if (pr.Mergeable != true)
-                    {
-                        result.SkippedNotMergeable++;
-
-                        if (log)
-                            _logger.LogWarning("--- Pull request ({name}) {prNumber} is not mergeable",
-                                pr.Base?.Repo?.Name ?? repo.Name, pr.Number);
-
-                        continue;
-                    }
-
                     try
                     {
+                        // GitHub calculates mergeability asynchronously. Null is unknown, not a conflict.
+                        for (var retry = 0; pr.Mergeable == null && retry < 3; retry++)
+                        {
+                            int retryDelayMs = 1000 << retry;
+                            if (log)
+                                _logger.LogInformation(
+                                    "Mergeability for PR #{number} in {repoName} is unknown; retry {retry}/3 in {delayMs}ms",
+                                    pr.Number, repo.Name, retry + 1, retryDelayMs);
+
+                            await Task.Delay(retryDelayMs, cancellationToken).NoSync();
+                            GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken).NoSync();
+                            pr = await client.Repos[repo.Owner.Login][repo.Name].Pulls[pr.Number!.Value.ToString()]
+                                             .GetAsync(cancellationToken: cancellationToken).NoSync()
+                                 ?? throw new InvalidOperationException("GitHub returned no pull request while refreshing mergeability.");
+                        }
+
+                        if (pr.Mergeable == null)
+                        {
+                            result.SkippedUnknownMergeability++;
+                            if (log)
+                                _logger.LogWarning("Skipping PR #{number} in {repoName}: mergeability is still unknown after 3 retries",
+                                    pr.Number, repo.Name);
+                            continue;
+                        }
+
+                        if (pr.Mergeable == false)
+                        {
+                            result.SkippedNotMergeable++;
+                            if (log)
+                                _logger.LogWarning("Skipping PR #{number} in {repoName}: GitHub reports merge conflicts",
+                                    pr.Number, repo.Name);
+                            continue;
+                        }
+
                         // Optional passing-checks gate
                         if (checkForPassingChecks)
                         {
@@ -899,6 +923,10 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                         break;
                     }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         result.Errors++;
@@ -909,6 +937,10 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                 if (log && mergedForRepo > 0)
                     _logger.LogInformation("Merged {merged} PRs for {repoName}", mergedForRepo, repo.Name);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -939,6 +971,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             {
                 prsConsidered += result.PullRequestsConsidered;
                 skippedNotMergeable += result.SkippedNotMergeable;
+                skippedUnknownMergeability += result.SkippedUnknownMergeability;
                 skippedFailedChecks += result.SkippedFailedChecks;
                 errors += result.Errors;
 
@@ -956,8 +989,8 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         if (log)
             _logger.LogInformation(
                 "Incremental merge completed for owner {owner}. Total merged: {totalMerged}. Repository passes: {reposProcessed}. PRs considered: {prsConsidered}. " +
-                "Skipped not-mergeable: {skippedNotMergeable}. Skipped failed-checks: {skippedFailedChecks}. Errors: {errors}",
-                owner, totalMerged, reposProcessed, prsConsidered, skippedNotMergeable, skippedFailedChecks, errors);
+                "Skipped not-mergeable: {skippedNotMergeable}. Skipped unknown-mergeability: {skippedUnknownMergeability}. Skipped failed-checks: {skippedFailedChecks}. Errors: {errors}",
+                owner, totalMerged, reposProcessed, prsConsidered, skippedNotMergeable, skippedUnknownMergeability, skippedFailedChecks, errors);
     }
 
     private sealed class IncrementalMergeResult(Repository repository)
@@ -967,6 +1000,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
         public bool Requeue { get; set; }
         public int PullRequestsConsidered { get; set; }
         public int SkippedNotMergeable { get; set; }
+        public int SkippedUnknownMergeability { get; set; }
         public int SkippedFailedChecks { get; set; }
         public int Errors { get; set; }
     }
