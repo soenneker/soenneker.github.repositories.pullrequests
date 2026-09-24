@@ -44,9 +44,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Soenneker.Extensions.DateTime" Version="4.0.1809" />
         <PackageReference Include="Soenneker.Extensions.List" Version="4.0.992" />
         <PackageReference Include="Soenneker.GitHub.Repositories.Runs" Version="4.0.1100" />
         <PackageReference Include="Soenneker.Utils.Delay" Version="4.0.89" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Soenneker.Extensions.String" Version="4.0.762" />
+        <PackageReference Include="Soenneker.Utils.Random" Version="4.0.134" />
     </ItemGroup>
 </Project>

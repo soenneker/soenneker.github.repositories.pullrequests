@@ -28,4 +28,7 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\Soenneker.GitHub.Repositories.PullRequests\Soenneker.GitHub.Repositories.PullRequests.csproj" />
     </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    </ItemGroup>
 </Project>
