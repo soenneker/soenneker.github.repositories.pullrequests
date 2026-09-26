@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Soenneker.Extensions.List;
 using Soenneker.Extensions.String;
@@ -637,20 +638,20 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 _logger.LogInformation("Rebasing PR #{number}, which is {behindBy} commits behind its base branch...", number,
                     comparison.BehindBy);
 
-            var payload = new
+            var payload = new JsonObject
             {
-                query =
+                ["query"] =
                     "mutation($pullRequestId:ID!,$expectedHeadOid:GitObjectID!){updatePullRequestBranch(input:{pullRequestId:$pullRequestId,expectedHeadOid:$expectedHeadOid,updateMethod:REBASE}){pullRequest{id}}}",
-                variables = new
+                ["variables"] = new JsonObject
                 {
-                    pullRequestId = nodeId,
-                    expectedHeadOid = headSha
+                    ["pullRequestId"] = nodeId,
+                    ["expectedHeadOid"] = headSha
                 }
             };
 
             using var request = new HttpRequestMessage(HttpMethod.Post, "graphql")
             {
-                Content = JsonContent.Create(payload)
+                Content = new StringContent(payload.ToJsonString(), Encoding.UTF8, "application/json")
             };
 
             HttpClient httpClient = await _gitHubHttpClient.Get(cancellationToken).NoSync();
