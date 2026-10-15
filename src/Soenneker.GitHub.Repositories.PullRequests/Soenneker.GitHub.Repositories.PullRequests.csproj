@@ -53,6 +53,6 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.794" />
-        <PackageReference Include="Soenneker.Utils.Random" Version="4.0.144" />
+        <PackageReference Include="Soenneker.Utils.Random" Version="4.0.145" />
     </ItemGroup>
 </Project>
