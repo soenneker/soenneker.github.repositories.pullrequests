@@ -159,7 +159,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                     continue;
 
                 // Get full pull request details
-                PullRequest? fullPr = await client.Repos[owner][name].Pulls[pullRequestNumber.ToString()]
+                PullRequest? fullPr = await client.Repos[owner][name].Pulls[pullRequestNumber]
                                                   .GetAsync(cancellationToken: cancellationToken).NoSync();
 
                 if (fullPr != null)
@@ -474,7 +474,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
     {
         GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken).NoSync();
 
-        List<PullRequestReview>? reviews = await client.Repos[owner][repo].Pulls[pullRequestNumber.ToString()].Reviews
+        List<PullRequestReview>? reviews = await client.Repos[owner][repo].Pulls[pullRequestNumber].Reviews
                                                        .GetAsync(cancellationToken: cancellationToken).NoSync();
 
         return reviews?.Any(r => r.State == "APPROVED") == true;
@@ -499,14 +499,14 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             if (username != null && simplePr.User?.Login != username)
                 continue;
 
-            List<PullRequestReview>? reviews = await client.Repos[owner][name].Pulls[(simplePr.Number ?? 0).ToString()]
+            List<PullRequestReview>? reviews = await client.Repos[owner][name].Pulls[(simplePr.Number ?? 0)]
                                                            .Reviews.GetAsync(cancellationToken: cancellationToken)
                                                            .NoSync();
 
             if (reviews?.Any(r => r.State == "APPROVED") == true)
                 continue;
 
-            PullRequest? fullPr = await client.Repos[owner][name].Pulls[(simplePr.Number ?? 0).ToString()]
+            PullRequest? fullPr = await client.Repos[owner][name].Pulls[(simplePr.Number ?? 0)]
                                               .GetAsync(cancellationToken: cancellationToken).NoSync();
 
             if (fullPr != null)
@@ -562,7 +562,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             Event = PullsCreateReviewRequestEvent.Approve
         };
 
-        await client.Repos[owner][name].Pulls[(pullRequest.Number ?? 0).ToString()].Reviews
+        await client.Repos[owner][name].Pulls[(pullRequest.Number ?? 0)].Reviews
                     .PostAsync(review, cancellationToken: cancellationToken).NoSync();
 
         _logger.LogInformation("Approved PR #{number} ({message})", pullRequest.Number, message);
@@ -689,7 +689,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
             CommitMessage = message
         };
 
-        await client.Repos[owner][name].Pulls[(pullRequest.Number ?? 0).ToString()].Merge
+        await client.Repos[owner][name].Pulls[(pullRequest.Number ?? 0)].Merge
                     .PutAsync(mergeRequest, cancellationToken: cancellationToken).NoSync();
 
         _logger.LogInformation("Merged PR #{number} ({message})", pullRequest.Number, message);
@@ -845,7 +845,7 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
 
                             await Task.Delay(retryDelayMs, cancellationToken).NoSync();
                             GitHubOpenApiClient client = await _gitHubOpenApiClientUtil.Get(cancellationToken).NoSync();
-                            pr = await client.Repos[repo.Owner.Login][repo.Name].Pulls[pr.Number!.Value.ToString()]
+                            pr = await client.Repos[repo.Owner.Login][repo.Name].Pulls[pr.Number!.Value]
                                              .GetAsync(cancellationToken: cancellationToken).NoSync()
                                  ?? throw new InvalidOperationException("GitHub returned no pull request while refreshing mergeability.");
                         }
