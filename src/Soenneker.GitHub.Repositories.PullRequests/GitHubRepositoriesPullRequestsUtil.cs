@@ -628,22 +628,16 @@ public sealed class GitHubRepositoriesPullRequestsUtil : IGitHubRepositoriesPull
                 continue;
             }
 
-            await using Stream? comparison = await client.Repos[owner][name].Compare[$"{baseSha}...{headSha}"]
+            CommitComparison? comparison = await client.Repos[owner][name].Compare[$"{baseSha}...{headSha}"]
                                                         .GetAsync(config => config.Headers.Add("Accept", "application/vnd.github+json"),
                                                             cancellationToken).NoSync();
 
-            if (comparison == null)
-                continue;
-
-            using JsonDocument comparisonDocument = await JsonDocument.ParseAsync(comparison, cancellationToken: cancellationToken).NoSync();
-
-            if (!comparisonDocument.RootElement.TryGetProperty("behind_by", out JsonElement behindByElement) ||
-                behindByElement.ValueKind != JsonValueKind.Number || !behindByElement.TryGetInt32(out int behindBy) || behindBy <= 0)
+            if (comparison?.BehindBy is not > 0)
                 continue;
 
             if (log)
                 _logger.LogInformation("Rebasing PR #{number}, which is {behindBy} commits behind its base branch...", number,
-                    behindBy);
+                    comparison.BehindBy);
 
             var payload = new JsonObject
             {
